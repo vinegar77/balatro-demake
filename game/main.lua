@@ -19,7 +19,12 @@ function love.load()
     fonttiny=love.graphics.newFont("resources/m6x11plus.ttf",11)
     cursor=love.graphics.newImage("resources/textures/cursor.png")
     ui=love.graphics.newImage("resources/textures/uithing.png")
-    scoringPopup={love.graphics.newImage("resources/textures/chipspopup.png")}
+    scoringPopup={love.graphics.newImage("resources/textures/popup/chips.png"),
+    love.graphics.newImage("resources/textures/popup/mult.png"),
+    love.graphics.newImage("resources/textures/popup/cash.png"),
+    love.graphics.newImage("resources/textures/popup/mult.png"),
+    love.graphics.newImage("resources/textures/popup/mult.png")}
+    love.graphics.setBackgroundColor(love.math.colorFromBytes(91, 123, 79))
     uicanvas=love.graphics.newCanvas(153,240)
     blindcan=love.graphics.newCanvas(135,71)
     local bigfntatlas={"1","2","3","4","5","6","7","8","9","0",",","$","-"}
@@ -142,16 +147,22 @@ local function idHandTypes()
             if card.hselect[sortedSids[i]].mod==1 then
                 if fourfingersave then
                     fourfingersave=false
-                    last=sortedS[i]
                 else
                     isStraight=false
                     break
                 end
             elseif sortedS[i]-last ~= 1 and (not shortcut or sortedS[i]-last ~= 2) then
                 if fourfingersave then
-                    fourfingersave=false
-                    nonscoreid=(i==5 and 5 or i-1)
-                    last=sortedS[i]
+                    if i==2 or i==5 or sortedS[i]-last==0 then
+                        fourfingersave=false
+                        if sortedS[i]-last~=0 then
+                        nonscoreid=(i==5 and 5 or i-1)
+                        last=sortedS[i]
+                        end
+                    else
+                        isStraight=false
+                        break
+                    end
                 else
                     isStraight=false
                     break
@@ -352,8 +363,22 @@ local function updateUiCanvas(dt,myid)
         multrate=dchips
         imult=dismult
     end
-    dischips=dischips+(dchips/chiprate>0 and chiprate or dchips)
+    dischips=dischips+(dchips/chiprate>1 and chiprate or dchips)
     dismult=math.floor((multrate-dchips)/multrate*(mult-imult))+imult
+end
+
+local function updateUiCMultOnly(dt,myid)
+    local dmult = mult-dismult
+    local deleteself= dmult==0
+    table.insert(Drawer,drawToUiCanvas)
+    if deleteself then
+        chiprate,multrate,imult=nil,nil,0
+        return myid and table.remove(Updater,myid)
+    end
+    if not chiprate then
+        chiprate=math.ceil(math.abs(dmult)/20)*(dmult>0 and 1 or -1)
+    end
+    dismult=dismult+(dmult/chiprate>1 and chiprate or dmult)
 end
 
 function updateBlind(blindId)
@@ -384,29 +409,48 @@ local function chance(denominator)
     return love.math.random(1,denominator)==1
 end
 
+local ccardStage = 1
+local ccardReStage=1
 
-local function scoreCard(ccard)
-    -- returns print string + an id for what happened (for appropriate bubble)
-    local rank,suite,mod,seal,edition = card.getRank(ccard), card.getSuite(ccard), ccard.mod, ccard.seal, ccard.edit
-    local stage = ccard.stage or 1
-    -- will add in jokers here later
-    if stage==1 then
-        local dchip = (rank==99 and 50 or rank==14 and 11 or rank>9 and 10 or rank)+(mod==3 and 30 or 0)
+local scoreCardScoringStages = {
+    function (rank,_,mod,_,_,_)
+        --stage 1 (always returns nonzero)
+        local dchip= (rank==99 and 50 or rank==14 and 11 or rank>9 and 10 or rank)+(mod==3 and 30 or 0)
         chips=chips+dchip
-        --check for next scoring stage needed
-        ccard.stage=(mod==2 or mod==4 and chance(5)) and 2 or (mod==4 and chance(20)) and 3 or edition~=0 and 4 or seal>2 and 5 or 0
         return {str="+"..dchip,id=1}
-    elseif stage==2 then
-        local dmult = (mod==4 and 4 or mod==5 and 20)
+    end,
+    function (_,_,mod,_,_)
+        --stage 2 (enchancement mult)
+        if not (mod==5 or mod==4 and chance(5)) then
+            return nil
+        end
+        if mod==6 then
+            mult=mult*2
+            return {str="x2 Mult",id=4}
+        end
+        local dmult= (mod==5 and 4 or mod==4 and 20)
         mult=mult+dmult
-        ccard.stage= (mod==4 and chance(20)) and 3 or edition~=0 and 4 or seal>2 and 5 or 0
-        return {str="+"..dmult,id=2}
-    elseif stage==3 then
+        return ({str="+"..dmult,id=2})
+    end,
+    function (_,_,mod,_,_)
+        --stage 3 (lucky card payout)
+        if not (mod==4 and chance(15)) then
+            return nil
+        end
         money=money+20
-        ccard.stage= edition~=0 and 4 or seal>2 and 5 or 0
-        return {str="+$20",id=3}
-    elseif stage==4 then
-        ccard.stage= seal>2 and 5 or 0
+        return {str="$20",id=3}
+    end,
+    function (_,_,_,seal,_)
+        --stage 4 (gold seal)
+        if seal~=3 then return nil end
+        money=money+3
+        return {str="$3",id=3}
+    end,
+    function (_,_,_,_,edition)
+        --stage 5 (edition bonus)
+        if edition==0 then
+            return nil
+        end
         if edition==1 then
             chips=chips+50
             return {str="+50",id=1}
@@ -417,18 +461,42 @@ local function scoreCard(ccard)
         end
         if edition==3 then
             mult=mult*1.5
-            -- insert mult update draw thing here
-            return {str="x1.5",id=4}
+            return {str="x1.5 Mult",id=4}
         end
-    elseif stage==5 then
-        if seal==3 then
-        money=money+3
-        stage=0
-        return {str="+$3",id=3}
-        end
-        stage=1
+    end
+}
+
+local scoreCardScoringReStages = {
+    function (_,_,_,seal,_)
+        if seal~=4 then return nil end
+        return 1
+    end
+}
+
+
+
+local function scoreCardScoring(ccard)
+    -- returns print string + an id for what happened (for appropriate bubble)
+    local rank,suite,mod,seal,edition = card.getRank(ccard), card.getSuite(ccard), ccard.mod, ccard.seal, ccard.edit
+    local pop,maxStage,maxReStage=nil,#scoreCardScoringStages,#scoreCardScoringReStages
+    while not pop and ccardStage<=maxStage do
+        pop=scoreCardScoringStages[ccardStage](rank,suite,mod,seal,edition)
+        ccardStage=ccardStage+1
+    end
+    if pop then
+        return pop
+    end
+    while not pop and ccardReStage<=maxReStage do
+        pop=scoreCardScoringReStages[ccardReStage](rank,suite,mod,seal,edition)
+        ccardReStage=ccardReStage+1
+    end
+    if pop then
+        ccardStage=1
         return {str="Again!",id=5}
     end
+    ccardStage=1
+    ccardReStage=1
+    return nil
 end
 
 local scorePop={str="",id=0,key=0,time=0}
@@ -437,7 +505,7 @@ local function scorePopUpDraw(screen,myid)
     if screen~="bottom" then
     local pos = playCardStartPos+9+45*scorePop.key
     love.graphics.draw(scoringPopup[scorePop.id],pos,90)
-    love.graphics.printf(scorePop.str,pos-1,90,24,"center")
+    love.graphics.printf(scorePop.str,pos-3,90,26,"center")
     table.remove(Drawer,myid)
     end
 end
@@ -457,22 +525,30 @@ local function scoreAndAnimate(dt,myid)
         prescore=false
     end
     if scoreTimer<1.7 then return end
-    if card.toScore[1].stage==0 then
-        table.remove(card.toScore,1)
-    end
+    local pop
+    while true do
+    pop = scoreCardScoring(card.toScore[1])
+    if pop then break end
+    table.remove(card.toScore,1)
     if #card.toScore==0 then
-        -- will add jokers in between these two steps later...
+        -- will add in hand + jokers in between these two steps later...
         table.remove(Updater,myid)
         table.insert(Updater,calcAddScore)
         score=score+chips*mult
         chips,mult = 0,0
         return
     end
-    scorePop=scoreCard(card.toScore[1])
+    end
+    scorePop=pop
     scorePop.key=card.toScore[1].playKey
     scorePop.time=0
+    if scorePop.id==2 or scorePop.id==4 then
+    table.insert(Updater,scorePopUpUpdate)
+    table.insert(Updater,updateUiCMultOnly)
+    else
     table.insert(Updater,scorePopUpUpdate)
     table.insert(Updater,updateUiCanvas)
+    end
     scoreTimer=scoreTimer-1.2
 end
 
@@ -530,7 +606,7 @@ local function postScoreReset()
         table.insert(Drawer,function (screen)
             if screen~="bottom" then
                 if score<blindrq then
-                    love.graphics.print("Too bad... \nHit start to exit",200,40)
+                    love.graphics.print("Too bad... \nHit start to exit\n(May Crash)",200,40)
                 else
                     love.graphics.print("...How did you win?!?\nCongrats!!\nBut winning hasn't been\nadded yet...",200,40)
                 end
@@ -541,11 +617,12 @@ local function postScoreReset()
     animationflag=false
 end
 
-function calcAddScore(dt,myid)
+function calcAddScore(_,myid)
     -- heavily reusing code here... including the chiprate name 
     local dscore= score-dispscore
     local deleteself= dscore==0 and chips==dischips and mult==dismult
     table.insert(Drawer,drawToUiCanvas)
+    table.insert(Drawer,drawPlayedCards)
     if deleteself then
         chiprate,multrate,imult,ichips=nil,nil,0,0
         postScoreReset()
@@ -557,7 +634,7 @@ function calcAddScore(dt,myid)
         imult=dismult
         ichips=dischips
     end
-    dispscore=dispscore+(dscore/chiprate>0 and chiprate or dscore)
+    dispscore=dispscore+(dscore/chiprate>1 and chiprate or dscore)
     dismult=math.ceil((multrate-dscore)/multrate*(mult-imult))+imult
     dischips=math.ceil((multrate-dscore)/multrate*(chips-ichips))+ichips
 end
@@ -582,7 +659,6 @@ local debugstring = ""
 
 function love.draw(screen)
     love.graphics.setBlendMode("alpha","alphamultiply")
-    love.graphics.setBackgroundColor(love.math.colorFromBytes(91, 123, 79))
     if screen~="bottom" then
     --[[ Debug Text
     --love.graphics.print(#card.hand.."\n"..cursorid.."\n"..#card.hselect.."\nFPS: "..love.timer.getFPS())
@@ -643,6 +719,7 @@ function love.gamepadpressed(_,button)
         --]]
     end
     if animationflag then return end
+    --[[
     if button=="back" then
         card.debugHand()
         nselect=0
@@ -651,6 +728,7 @@ function love.gamepadpressed(_,button)
         chips=0 mult=0
         table.insert(Updater,updateUiCanvas)
     end
+    --]]
     if button=="dpleft" then
         cursorid=cursorid==1 and #card.hand or cursorid-1
     end

@@ -100,14 +100,14 @@ function card.getRank(v)
 end
 
 function card.debugHand()
-    card.hand={{rank=1,suite=3,mod=0,seal=0,edit=0,selected=false},
-{rank=1,suite=3,mod=0,seal=0,edit=0,selected=false},
-{rank=4,suite=3,mod=0,seal=0,edit=0,selected=false},
-{rank=4,suite=3,mod=0,seal=0,edit=0,selected=false},
-{rank=4,suite=3,mod=0,seal=0,edit=0,selected=false},
-{rank=4,suite=2,mod=0,seal=0,edit=0,selected=false},
-{rank=1,suite=2,mod=2,seal=0,edit=0,selected=false},
-{rank=2,suite=2,mod=1,seal=0,edit=0,selected=false}}
+    card.hand={{rank=10,suite=2,mod=4,seal=0,edit=1,selected=false},
+{rank=5,suite=4,mod=5,seal=0,edit=0,selected=false},
+{rank=13,suite=1,mod=3,seal=0,edit=0,selected=false},
+{rank=3,suite=2,mod=2,seal=0,edit=0,selected=false},
+{rank=8,suite=2,mod=1,seal=3,edit=0,selected=false},
+{rank=10,suite=2,mod=3,seal=0,edit=0,selected=false},
+{rank=11,suite=3,mod=5,seal=0,edit=0,selected=false},
+{rank=10,suite=2,mod=4,seal=4,edit=0,selected=false}}
 for i,v in ipairs(card.hand) do
     card.handcan[i]=love.graphics.newCanvas(41,55)
     love.graphics.setCanvas(card.handcan[i])
