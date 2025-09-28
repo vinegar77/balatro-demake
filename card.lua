@@ -1,0 +1,122 @@
+local card= {hand={},handcan={},hselect={},deck={},fdeck={},play={},playcan={}}
+
+--initialize card graphics
+card.cardfronts=love.graphics.newImage("resources/textures/cardfronts.png")
+card.cardmids=love.graphics.newImage("resources/textures/cardmids.png")
+local cardfqs = {}
+local cardmqs = {}
+for i=1,4 do
+    for j=1,13 do
+        cardfqs[i.."."..j]=love.graphics.newQuad(j*39-39,i*53-53,39,53,card.cardfronts)
+    end
+end
+for i=0,11 do
+    cardmqs[i]=love.graphics.newQuad(math.fmod(i*41,246),i<6 and 0 or 55,41,55,card.cardmids)
+end
+card.cardfqs=cardfqs
+card.cardmqs=cardmqs
+
+--Creates a full basic new deck
+function card.newBasicDeck()
+    for i=1,4 do
+        for j=1,13 do
+            table.insert(card.fdeck,{rank=j,suite=i,mod=0,seal=0,edit=0})
+            table.insert(card.deck,{rank=j,suite=i,mod=0,seal=0,edit=0})
+        end
+    end
+end
+
+function card.drawCard(num)
+    num=num or 1
+    for i=1,num do
+        if #card.deck==0 then break end
+        local temp=love.math.random(1,#card.deck)
+        local drewCard = card.deck[temp]
+        drewCard.selected=false
+        table.insert(card.hand,drewCard)
+        table.remove(card.deck,temp)
+        card.handcan[#card.hand]=love.graphics.newCanvas(41,55)
+        love.graphics.setCanvas(card.handcan[#card.handcan])
+        love.graphics.draw(card.cardmids,card.cardmqs[drewCard.mod])
+        if drewCard.mod ~= 1 then
+            love.graphics.draw(card.cardfronts,card.cardfqs[drewCard.suite.."."..drewCard.rank],1,1)
+        end
+        love.graphics.setCanvas()
+    end
+end
+
+function card.discardS(hSize)
+    local tempaddresses={}
+    for k,_ in pairs(card.hselect) do
+        table.insert(tempaddresses,k)
+    end
+    table.sort(tempaddresses)
+    for i=#tempaddresses,1,-1 do
+        table.remove(card.hand,tempaddresses[i])
+        table.remove(card.handcan,tempaddresses[i])
+    end
+    card.hselect={}
+    return card.drawCard(hSize-#card.hand)
+end
+
+
+
+
+function card.getSuiteHand(id)
+    local ccard=card.hand[id]
+    if ccard.mod==1 then
+        return -1
+    end
+    if ccard.mod==2 then
+        return -3
+    end
+    if Smeared then
+        return math.fmod(ccard.suite,2)
+    end
+    return ccard.suite
+end
+
+function card.getSuite(v)
+    if v.mod==1 then
+        return -1
+    end
+    if v.mod==2 then
+        return -3
+    end
+    if Smeared then
+        return math.fmod(v.suite,2)
+    end
+    return v.suite
+end
+
+
+function card.getRankHand(id)
+    local ccard=card.hand[id]
+    return ccard.mod==1 and 99 or ccard.rank==1 and 14 or ccard.rank
+end
+
+function card.getRank(v)
+    return v.mod==1 and 99 or v.rank==1 and 14 or v.rank
+end
+
+function card.debugHand()
+    card.hand={{rank=10,suite=2,mod=4,seal=0,edit=1,selected=false},
+{rank=5,suite=4,mod=5,seal=0,edit=0,selected=false},
+{rank=13,suite=1,mod=3,seal=0,edit=0,selected=false},
+{rank=3,suite=2,mod=2,seal=0,edit=0,selected=false},
+{rank=8,suite=2,mod=1,seal=3,edit=0,selected=false},
+{rank=10,suite=2,mod=3,seal=0,edit=0,selected=false},
+{rank=11,suite=3,mod=5,seal=0,edit=0,selected=false},
+{rank=10,suite=2,mod=4,seal=4,edit=0,selected=false}}
+for i,v in ipairs(card.hand) do
+    card.handcan[i]=love.graphics.newCanvas(41,55)
+    love.graphics.setCanvas(card.handcan[i])
+    love.graphics.draw(card.cardmids,card.cardmqs[v.mod])
+    if v.mod ~= 1 then
+        love.graphics.draw(card.cardfronts,card.cardfqs[v.suite.."."..v.rank],1,1)
+    end
+    love.graphics.setCanvas()
+end
+end
+
+return card
