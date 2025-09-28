@@ -65,6 +65,8 @@ There is no plan to add the same level of animation/polish as the original. This
 
 Just drag the latest release into the 3ds folder on your SD card! (CFW required)
 
+Open homebrew launcher, then open "Lovepotion" (custom metadata coming after more than one round maybe)
+
 "Build" instructions coming soon
 
 ## Credits
