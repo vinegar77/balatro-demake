@@ -17,6 +17,7 @@ Balatro Gameplay on 3DS!
 * X: Discard Selected Cards (No animation currently)
 * Y: Play Selected Cards
 * B: Deselect Card
+* Start: Exit Game
 
 ## Current Version: 0.0.1 (Proof-of-Concept Demo)
 
@@ -64,6 +65,8 @@ There is no plan to add the same level of animation/polish as the original. This
 ## Downloading
 
 Just drag the latest release into the 3ds folder on your SD card! (CFW required)
+
+CIA installables are not supported by Lovepotion so they are not available at this time, sorry. (I doubt you'd want to install the demo regardless...)
 
 Open homebrew launcher, then open "Lovepotion" (custom metadata coming after more than one round maybe)
 
