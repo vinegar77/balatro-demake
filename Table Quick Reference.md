@@ -99,6 +99,20 @@ Reverse order of priority, so
 |11|Pair|
 |12|High Card|
 
+## Sorting
+
+sortMode: True=Rank, False=Suite
+
+## Full Joker Possible Activation Stages
+
+1. OnBuy when bought from shop/created other ways
+2. OnSell when sold/destroyed (often undoes OnBuy effects)
+3. OnShopEnd when shop is done i.e. perkeo
+4. OnBlind when blind starts i.e. burglar
+5. OnDiscard when discarding
+6. 
+
+
 ## Scoring tldr
 
 Order of scoring same as in real balatro:

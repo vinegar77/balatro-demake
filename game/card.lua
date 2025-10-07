@@ -1,4 +1,4 @@
-local card= {hand={},handcan={},hselect={},deck={},fdeck={},play={},playcan={}}
+local card= {hand={},handcan={},hselect={},deck={},fdeck={},play={},playcan={},sortMode=true}
 
 --initialize card graphics
 card.cardfronts=love.graphics.newImage("resources/textures/cardfronts.png")
@@ -26,6 +26,16 @@ function card.newBasicDeck()
     end
 end
 
+function card.newEnhancedDeck()
+    for i=1,4 do
+        for j=1,13 do
+            table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=0,edit=0})
+            --table.insert(card.fdeck,{rank=j,suite=i,mod=7,seal=4,edit=0})
+            table.insert(card.deck,card.fdeck[#card.fdeck])
+        end
+    end
+end
+
 function card.drawCard(num)
     num=num or 1
     for i=1,num do
@@ -40,6 +50,9 @@ function card.drawCard(num)
         love.graphics.draw(card.cardmids,card.cardmqs[drewCard.mod])
         if drewCard.mod ~= 1 then
             love.graphics.draw(card.cardfronts,card.cardfqs[drewCard.suite.."."..drewCard.rank],1,1)
+        end
+        if drewCard.edition~=0 then
+            
         end
         love.graphics.setCanvas()
     end
@@ -100,14 +113,14 @@ function card.getRank(v)
 end
 
 function card.debugHand()
-    card.hand={{rank=10,suite=2,mod=4,seal=0,edit=1,selected=false},
-{rank=5,suite=4,mod=5,seal=0,edit=0,selected=false},
-{rank=13,suite=1,mod=3,seal=0,edit=0,selected=false},
-{rank=3,suite=2,mod=2,seal=0,edit=0,selected=false},
-{rank=8,suite=2,mod=1,seal=3,edit=0,selected=false},
-{rank=10,suite=2,mod=3,seal=0,edit=0,selected=false},
-{rank=11,suite=3,mod=5,seal=0,edit=0,selected=false},
-{rank=10,suite=2,mod=4,seal=4,edit=0,selected=false}}
+    card.hand={{rank=9,suite=2,mod=0,seal=0,edit=1,selected=false},
+{rank=8,suite=3,mod=0,seal=0,edit=0,selected=false},
+{rank=7,suite=4,mod=0,seal=0,edit=0,selected=false},
+{rank=7,suite=1,mod=0,seal=0,edit=0,selected=false},
+{rank=6,suite=4,mod=0,seal=0,edit=0,selected=false},
+{rank=4,suite=1,mod=0,seal=0,edit=0,selected=false},
+{rank=4,suite=3,mod=0,seal=0,edit=0,selected=false},
+{rank=2,suite=2,mod=0,seal=0,edit=0,selected=false}}
 for i,v in ipairs(card.hand) do
     card.handcan[i]=love.graphics.newCanvas(41,55)
     love.graphics.setCanvas(card.handcan[i])
@@ -117,6 +130,42 @@ for i,v in ipairs(card.hand) do
     end
     love.graphics.setCanvas()
 end
+end
+
+local function sortbyRank()
+    local done=false
+    while not done do
+    done=true
+    for i=2,#card.hand do
+    local p,q = card.getRankHand(i-1),card.getRankHand(i)
+    local swap = p==q and card.hand[i-1].suite>card.hand[i].suite or p<q
+    if swap then
+        card.hand[i-1],card.handcan[i-1],card.hand[i],card.handcan[i]=card.hand[i],card.handcan[i],card.hand[i-1],card.handcan[i-1]
+        done=false
+    end
+    end
+    end
+end
+local function sortbySuite()
+    local done=false
+    while not done do
+    done=true
+    for i=2,#card.hand do
+    local p,q = card.hand[i-1].suite,card.hand[i].suite
+    local swap = p==q and card.getRankHand(i-1)<card.getRankHand(i) or p>q
+    if swap then
+        card.hand[i-1],card.handcan[i-1],card.hand[i],card.handcan[i]=card.hand[i],card.handcan[i],card.hand[i-1],card.handcan[i-1]
+        done=false
+    end
+    end
+    end
+end
+
+function card.sortHand()
+    if card.sortMode then
+        return sortbyRank()
+    end
+    return sortbySuite()
 end
 
 return card
