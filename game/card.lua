@@ -30,7 +30,7 @@ function card.newEnhancedDeck()
     for i=1,4 do
         for j=1,13 do
             table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=0,edit=0})
-            --table.insert(card.fdeck,{rank=j,suite=i,mod=7,seal=4,edit=0})
+            --table.insert(card.fdeck,{rank=j,suite=i,mod=6,seal=4,edit=0})
             table.insert(card.deck,card.fdeck[#card.fdeck])
         end
     end
@@ -137,7 +137,7 @@ local function sortbyRank()
     while not done do
     done=true
     for i=2,#card.hand do
-    local p,q = card.getRankHand(i-1),card.getRankHand(i)
+    local p,q = math.fmod(card.getRankHand(i-1),99),math.fmod(card.getRankHand(i),99)
     local swap = p==q and card.hand[i-1].suite>card.hand[i].suite or p<q
     if swap then
         card.hand[i-1],card.handcan[i-1],card.hand[i],card.handcan[i]=card.hand[i],card.handcan[i],card.hand[i-1],card.handcan[i-1]
@@ -151,7 +151,8 @@ local function sortbySuite()
     while not done do
     done=true
     for i=2,#card.hand do
-    local p,q = card.hand[i-1].suite,card.hand[i].suite
+    local p,q = card.hand[i-1],card.hand[i]
+    p,q = (p.mod==1 and 10 or p.suite),(q.mod==1 and 10 or q.suite)
     local swap = p==q and card.getRankHand(i-1)<card.getRankHand(i) or p>q
     if swap then
         card.hand[i-1],card.handcan[i-1],card.hand[i],card.handcan[i]=card.hand[i],card.handcan[i],card.hand[i-1],card.handcan[i-1]

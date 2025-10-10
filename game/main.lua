@@ -4,12 +4,21 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 --]]
-local card,cursorid,cursor,nselect,hTypes,scoreIds,fourfinger,shortcut,curHand,animationflag,score,ui,uicanvas,chips,mult,money,chands,cdiscards,maxhands,maxdiscards
-local dischips,dismult,chiprate,multrate,spamdelay, cante, blindcan, blindrq, dispscore, imult, ichips, scoringPopup, handSize, cDist, cOffset, dragMode, cursorD
-local updateBlind, bigFont, writeBig, updateHSizeVars, dispscoreS, noUpMult
-local font18,fonttiny, scoreTimer, prescore, playCardStartPos, scoringDone, nhcard, shand
+local cursorid,cursor,nselect,scoreIds,animationflag,score,ui,uicanvas
+local dischips,dismult,chiprate,multrate,spamdelay, cante, blindcan, blindrq, dispscore, imult, ichips, scoringPopup, cDist, cOffset, dragMode, cursorD
+local updateBlind, bigFont, writeBig, updateHSizeVars, dispscoreS, noUpMult, jSlotShad
+local font18,fonttiny, scoreTimer, prescore, playCardStartPos, scoringDone, nhcard, shand, njoker, sjoke
 local Updater,Drawer,bigFontq={},{},{}
 local drawToUiCanvas, calcAddScore
+card,hTypes,fourfinger,shortcut,curHand,chips,mult,money,chands,cdiscards,maxhands,maxdiscards,handSize,joker=nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil
+scoreCardStages,scoreCardReStages = {},{}
+local scoreCardStages=scoreCardStages
+local scoreCardReStages = scoreCardReStages
+card=require "card"
+joker=require "joker"
+local card = card
+joker.init(card,Updater,Drawer)
+local joker = joker
 
 function love.load()
     love.graphics.set3D(false)
@@ -19,13 +28,14 @@ function love.load()
     fonttiny=love.graphics.newFont("resources/m6x11plus.ttf",11)
     cursor=love.graphics.newImage("resources/textures/cursor.png")
     cursorD=love.graphics.newImage("resources/textures/cursor2.png")
+    jSlotShad=love.graphics.newImage("resources/textures/jokerSlotShadow.png")
     ui=love.graphics.newImage("resources/textures/uithing.png")
     scoringPopup={love.graphics.newImage("resources/textures/popup/chips.png"),
     love.graphics.newImage("resources/textures/popup/mult.png"),
     love.graphics.newImage("resources/textures/popup/cash.png"),
     love.graphics.newImage("resources/textures/popup/mult.png"),
     love.graphics.newImage("resources/textures/popup/mult.png")}
-    love.graphics.setBackgroundColor(love.math.colorFromBytes(91, 123, 79))
+    love.graphics.setBackgroundColor(.231,.467,.369)
     uicanvas=love.graphics.newCanvas(153,240)
     blindcan=love.graphics.newCanvas(135,71)
     local bigfntatlas={"1","2","3","4","5","6","7","8","9","0",",","$","-"}
@@ -55,7 +65,12 @@ function love.load()
     fourfinger=false
     shortcut=false
     love.graphics.setFont(font18)
-    card=require "card"
+    joker.addNewJoker(8)
+    joker.addNewJoker(9)
+    joker.addNewJoker(13)
+    joker.addNewJoker(1)
+    joker.addNewJoker(11)
+    joker.addNewJoker(13)
     card.newEnhancedDeck()
     card.drawCard(handSize)
     card.sortHand()
@@ -424,7 +439,7 @@ local function drawPlayedCards(screen,myid)
     end
 end
 
-local function chance(denominator)
+function love.chance(denominator)
     return love.math.random(1,denominator)==1
 end
 
@@ -440,7 +455,7 @@ local scoreCardScoringStages = {
     end,
     function (_,_,mod,_,_)
         --stage 2 (enchancement mult)
-        if not (mod==5 or mod==6 or mod==4 and chance(5)) then
+        if not (mod==5 or mod==6 or mod==4 and love.chance(5)) then
             return nil
         end
         if mod==6 then
@@ -449,11 +464,11 @@ local scoreCardScoringStages = {
         end
         local dmult= (mod==5 and 4 or mod==4 and 20)
         mult=mult+dmult
-        return ({str="+"..dmult,id=2})
+        return ({str="+"..dmult.." Mult",id=2})
     end,
     function (_,_,mod,_,_)
         --stage 3 (lucky card payout)
-        if not (mod==4 and chance(15)) then
+        if not (mod==4 and love.chance(15)) then
             return nil
         end
         money=money+20
@@ -476,7 +491,7 @@ local scoreCardScoringStages = {
         end
         if edition==2 then
             mult=mult+10
-            return {str="+10",id=2}
+            return {str="+10 Mult",id=2}
         end
         if edition==3 then
             mult=mult*1.5
@@ -497,7 +512,9 @@ local scoreCardHandStages = {
     end
 }
 
-local scoreCardStages={scoreCardScoringStages,scoreCardHandStages}
+scoreCardStages[1]=scoreCardScoringStages
+scoreCardStages[2]=scoreCardHandStages
+scoreCardStages[3]={}
 
 
 local scoreCardScoringReStages = {
@@ -514,10 +531,12 @@ local scoreCardHandReStages = {
     end
 }
 
-local scoreCardReStages={scoreCardScoringReStages,scoreCardHandReStages}
+scoreCardReStages[1]=scoreCardScoringReStages
+scoreCardReStages[2]=scoreCardHandReStages
 
 local scorePop
 
+local shouldRetrigger = false
 local function scoreCardScoring(ccard)
     -- returns print string + an id for what happened (for appropriate bubble)
     local rank,suite,mod,seal,edition = card.getRank(ccard), card.getSuite(ccard), ccard.mod, ccard.seal, ccard.edit
@@ -529,9 +548,10 @@ local function scoreCardScoring(ccard)
         ccardStage=ccardStage+1
     end
     if pop then
+        shouldRetrigger=true
         return pop
     end
-    while not pop and ccardReStage<=maxReStage do
+    while shouldRetrigger and not pop and ccardReStage<=maxReStage do
         pop=cReTable[ccardReStage](rank,suite,mod,seal,edition)
         ccardReStage=ccardReStage+1
     end
@@ -539,12 +559,17 @@ local function scoreCardScoring(ccard)
         ccardStage=1
         return {str="Again!",id=5}
     end
+    shouldRetrigger=false
     ccardStage=1
     ccardReStage=1
     return nil
 end
 
-scorePop={str="",id=0,key=0,time=0,bigStage=1}
+local function scoreCardJoker(jslotid)
+    return scoreCardStages[3][jslotid] and scoreCardStages[3][jslotid]()
+end
+
+scorePop={str="",id=0,key=nil,time=0,bigStage=1,drawLoc=1}
 
 local function scorePopUpDraw(screen,myid)
     if screen~="bottom" then
@@ -564,14 +589,73 @@ local function handPopUpDraw(screen,myid)
     end
 end
 
-local popUpDraw = {scorePopUpDraw,handPopUpDraw}
+local function jokerPopUpDraw(screen,myid)
+    if screen=="bottom" then
+    local pos = joker.joffset+joker.jspace*(scorePop.key-1)+7
+    love.graphics.draw(scoringPopup[scorePop.id],pos,60)
+    love.graphics.printf(scorePop.str,pos-19,60,60,"center")
+    table.remove(Drawer,myid)
+    end
+end
+
+local popUpDraw = {scorePopUpDraw,handPopUpDraw,jokerPopUpDraw}
 
 local function scorePopUpUpdate(dt,myid)
     scorePop.time=scorePop.time+dt
-    table.insert(Drawer,popUpDraw[scorePop.bigStage])
+    table.insert(Drawer,popUpDraw[scorePop.drawLoc])
     if scorePop.time>.7 then
         table.remove(Updater,myid)
     end
+end
+
+local function jokerScoreAndAnimate(dt,myid)
+    scoreTimer=scoreTimer+dt
+    table.insert(Drawer,drawPlayedCards)
+    if scoreTimer<1.7 then return end
+    local pop
+    while true do
+    if #sjoke==0 then
+        table.remove(Updater,myid)
+        table.insert(Updater,calcAddScore)
+        score=math.ceil(score+chips*mult)
+        chips,mult = 0,0
+        return
+    end
+    pop = scoreCardJoker(sjoke[1])
+    if pop then break end
+    njoker = njoker+1
+    table.remove(sjoke,1)
+    end
+    table.remove(sjoke,1)
+    scorePop=pop
+    scorePop.key = njoker
+    njoker = njoker+1
+    scorePop.drawLoc=3
+    scorePop.time=0
+    if scorePop.id==2 then
+    table.insert(Updater,scorePopUpUpdate)
+    table.insert(Updater,updateUiCMultOnly)
+    elseif scorePop.id==4 then
+    dismult=mult>10^5 and formatNum(mult,5) or mult
+    table.insert(Updater,scorePopUpUpdate)
+    table.insert(Updater,updateUiCanvas)
+    else
+    table.insert(Updater,scorePopUpUpdate)
+    table.insert(Updater,updateUiCanvas)
+    end
+    scoreTimer=scoreTimer-1.2
+end
+
+local function prepJokerScoreAndAnimate(dt,myid)
+    table.insert(Drawer,drawPlayedCards)
+    njoker=1
+    sjoke={}
+    ccardStage=1
+    for i=0, #joker.jslots do
+        sjoke[i]=i
+    end
+    table.remove(Updater,myid)
+    table.insert(Updater,jokerScoreAndAnimate)
 end
 
 local function handScoreAndAnimate(dt,myid)
@@ -587,15 +671,14 @@ local function handScoreAndAnimate(dt,myid)
     if #shand==0 then
         -- will add in jokers later...
         table.remove(Updater,myid)
-        table.insert(Updater,calcAddScore)
-        score=math.ceil(score+chips*mult)
-        chips,mult = 0,0
+        table.insert(Updater,prepJokerScoreAndAnimate)
         return
     end
     end
     scorePop=pop
+    scorePop.drawLoc = scorePop.drawLoc or 2
     scorePop.bigStage = 2
-    scorePop.key = nhcard
+    scorePop.key = scorePop.key or nhcard
     scorePop.time=0
     if scorePop.id==2 then
     table.insert(Updater,scorePopUpUpdate)
@@ -646,12 +729,17 @@ local function scoreAndAnimate(dt,myid)
     end
     end
     scorePop=pop
-    scorePop.bigStage = 1
-    scorePop.key=card.toScore[1].playKey
+    scorePop.drawLoc = scorePop.drawLoc or 1
+    scorePop.bigStage=1
+    scorePop.key=scorePop.key or card.toScore[1].playKey
     scorePop.time=0
-    if scorePop.id==2 or scorePop.id==4 then
+    if scorePop.id==2 then
     table.insert(Updater,scorePopUpUpdate)
     table.insert(Updater,updateUiCMultOnly)
+    elseif scorePop.id==4 then
+    dismult=mult>10^5 and formatNum(mult,5) or mult
+    table.insert(Updater,scorePopUpUpdate)
+    table.insert(Updater,updateUiCanvas)
     else
     table.insert(Updater,scorePopUpUpdate)
     table.insert(Updater,updateUiCanvas)
@@ -750,7 +838,7 @@ function updateHSizeVars(hsize)
 end
 
 
-local debugstring = ""
+local debugstring
 function love.update(dt)
     for i=#Updater,1,-1 do
         Updater[i](dt,i)
@@ -761,6 +849,7 @@ function love.update(dt)
     debugstring=debugstring..i
     end
     --]]
+    debugstring=love.timer.getFPS()
 end
 
 
@@ -777,7 +866,7 @@ end
 function love.draw(screen)
     love.graphics.setBlendMode("alpha","alphamultiply")
     if screen~="bottom" then
-        --love.graphics.print(debugstring,160,90)
+        love.graphics.print(debugstring,160,90)
     --[[ Debug Text
     love.graphics.print(#card.hand.."\n"..cursorid.."\n"..#card.hselect.."\nFPS: "..love.timer.getFPS())
     if nselect>0 then
@@ -804,6 +893,7 @@ function love.draw(screen)
     love.graphics.draw(blindcan,15,6)
     love.graphics.setBlendMode("alpha","alphamultiply")
     else
+    love.graphics.draw(jSlotShad,1,46)
     love.graphics.setBlendMode("alpha","premultiplied")
     for i,v in ipairs(card.handcan) do
         local ccard=card.hand[i]
@@ -811,6 +901,10 @@ function love.draw(screen)
         if i==cursorid then
             love.graphics.draw(dragMode and cursorD or cursor,(i-1)*cDist+cOffset+33,ccard.selected and 89 or 119)
         end
+    end
+    local joff,jdist = joker.joffset,joker.jspace
+    for i,v in ipairs(joker.jcan) do
+        love.graphics.draw(v,(i-1)*jdist+joff,6)
     end
     end
     love.graphics.setBlendMode("alpha","alphamultiply")
@@ -891,7 +985,7 @@ function love.gamepadpressed(_,button)
         table.insert(Updater,anticrashspam)
     end
     if button=="rightshoulder" then
-        shortcut= not shortcut
+        joker.addNewJoker(math.random(2,11))
     end
     if button=="dpdown" then
         Smeared=not Smeared
