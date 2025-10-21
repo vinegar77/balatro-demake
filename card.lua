@@ -13,6 +13,7 @@ end
 for i=0,11 do
     cardmqs[i]=love.graphics.newQuad(math.fmod(i*41,246),i<6 and 0 or 55,41,55,card.cardmids)
 end
+cardmqs[12]=love.graphics.newQuad(0,110,41,55,card.cardmids)
 card.cardfqs=cardfqs
 card.cardmqs=cardmqs
 local foil = editDraw[1]
@@ -39,8 +40,8 @@ function card.newEnhancedDeck()
     local polyify = polyify
     for i=1,4 do
         for j=1,13 do
-            --table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=0,edit=math.random(0,3),bounce=0})
-            table.insert(card.fdeck,{rank=j,suite=i,mod=8,seal=0,edit=3,bounce=0})
+            table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=love.math.random(0,4),edit=math.random()>.3 and 0 or math.random(1,3),bounce=0})
+            --table.insert(card.fdeck,{rank=j,suite=2*love.math.random(1,2),mod=love.math.random(0,8),seal=0,edit=3,bounce=0})
             table.insert(card.deck,card.fdeck[#card.fdeck])
         end
     end
@@ -51,19 +52,21 @@ local function doPolychrome()
     love.graphics.setCanvas(card.handcan[#card.hand])
     local ccard = card.hand[#card.hand]
     local tempmidNew = love.image.newImageData(39,53)
-    tempmidNew:paste(tempmid,0,0,math.fmod(ccard.mod*41,246),ccard.mod<6 and 0 or 55,41,55)
+    tempmidNew:paste(tempmid,0,0,math.fmod(ccard.mod*41,246)+1,ccard.mod<6 and 1 or 56,39,53)
+    hueshift=1.3
     tempmidNew:mapPixel(polyify)
     local tempA = love.graphics.newImage(tempmidNew)
     love.graphics.draw(tempA,1,1)
     tempmidNew,tempA = nil,nil
     if ccard.mod~=1 then
+    hueshift=.65
     local tempfrontNew = love.image.newImageData(39,53)
     tempfrontNew:paste(tempfront,0,0,39*(ccard.rank-1),53*(ccard.suite-1),39,53)
     tempfrontNew:mapPixel(polyify)
     local tempB = love.graphics.newImage(tempfrontNew)
     love.graphics.draw(tempB,1,1)
     end
-    love.graphics.setCanvas()
+    hueshift=0
 end
 
 
@@ -86,13 +89,13 @@ function card.drawCard(num)
         if drewCard.mod ~= 1 then
             love.graphics.draw(card.cardfronts,card.cardfqs[drewCard.suite.."."..drewCard.rank],1,1)
         end
-        love.graphics.setCanvas()
         if drewCard.edit~=0 then
+            love.graphics.setCanvas()
             local tempC = love.graphics.newCanvas(41,55)
             love.graphics.setCanvas(tempC)
             love.graphics.draw(card.handcan[#card.handcan])
             if drewCard.edit==1 then
-                love.graphics.setBlendMode("screen")
+                love.graphics.setBlendMode("screen","premultiplied")
                 love.graphics.draw(foil[1],1,1)
                 love.graphics.setBlendMode("alpha")
                 love.graphics.setColor(1,1,1,.6)
@@ -115,9 +118,12 @@ function card.drawCard(num)
             love.graphics.setCanvas()
             love.graphics.setCanvas(card.handcan[#card.handcan])
             love.graphics.draw(tempC)
-            love.graphics.setCanvas()
         end
         end
+        if drewCard.seal~=0 then
+            love.graphics.draw(card.cardmids,card.cardmqs[drewCard.seal+8])
+        end
+        love.graphics.setCanvas()
     end
 end
 
@@ -141,26 +147,26 @@ end
 function card.getSuiteHand(id)
     local ccard=card.hand[id]
     if ccard.mod==1 then
-        return -1
+        return -4
     end
     if ccard.mod==2 then
         return -3
     end
     if Smeared then
-        return math.fmod(ccard.suite,2)
+        return -math.fmod(ccard.suite,2)
     end
     return ccard.suite
 end
 
 function card.getSuite(v)
     if v.mod==1 then
-        return -1
+        return -4
     end
     if v.mod==2 then
         return -3
     end
     if Smeared then
-        return math.fmod(v.suite,2)
+        return -math.fmod(v.suite,2)
     end
     return v.suite
 end

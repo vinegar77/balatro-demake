@@ -1,4 +1,4 @@
-local me = {myjslotid=0}
+local me = {}
 function me.onBuy()
     me.myjslotid=#joker.jslots
 end

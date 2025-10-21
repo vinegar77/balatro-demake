@@ -1,6 +1,7 @@
 local joker={init=nil,jslots={},jcan={},jspace=0,joffset=0}
 local card, Updater, Drawer
 joker.jokerAtlas = love.graphics.newImage("resources/textures/jokers.png")
+joker.maxjslots = 5
 local scoreCardStages = scoreCardStages
 local scoreCardReStages = scoreCardReStages
 local playEffectStages = playEffectStages
@@ -14,6 +15,7 @@ end
 local foil=editDraw[1]
 local holo = editDraw[2]
 polyimage=editDraw[3]
+hueshift=0
 local polyimage=polyimage
 --global psuedo shaders
 
@@ -46,7 +48,7 @@ function polyify(x,y,r,g,b,a)
     s = (s+sog)/2
     if s<.0001 then return l,l,l,a end
     h = (hi==r and (g-b)/d + (g<b and 6 or 0) or hi==g and (b-r)/d+2 or (r-g)/d + 4)/6
-    h = h+.3*s*hog
+    h = h+.3*s*hog+hueshift
     l = l - (l<.45 and .08 or 0)
     local q = l<.5 and l*(.9+s) or l+s-l*s
     local p = 2*l-q
@@ -101,7 +103,9 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         local tempB = love.image.newImageData("resources/textures/jokers.png")
         tempA:paste(tempB,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
         tempB=nil
+        hueshift=love.math.random()
         tempA:mapPixel(polyify)
+        hueshift=0
         local tempC = love.graphics.newImage(tempA)
         love.graphics.setCanvas(temp1)
         love.graphics.draw(tempC)
