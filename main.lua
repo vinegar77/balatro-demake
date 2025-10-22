@@ -6,12 +6,12 @@ end
 --]]
 local cursorid,cursor,nselect,scoreIds,animationflag,score,ui,uicanvas
 local dischips,dismult,chiprate,multrate,spamdelay, cante, blindcan, blindrq, dispscore, imult, ichips, scoringPopup, cDist, cOffset, dragMode, cursorD
-local updateBlind, bigFont, writeBig, dispscoreS, noUpMult, jSlotShad, nScoringEvents, uiButts
+local updateBlind, bigFont, writeBig, dispscoreS, noUpMult, jSlotShad, nScoringEvents, uiButts, aHeldTimer, bUICan
 local font18,fonttiny, scoreTimer, prescore, playCardStartPos, scoringDone, nhcard, shand, njoker, sjoke
 local Updater,Drawer,bigFontq={},{},{}
 local drawToUiCanvas, calcAddScore
 card,hTypes,fourfinger,shortcut,curHand,chips,mult,money,chands,cdiscards,maxhands,maxdiscards,handSize,joker=nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil
-scoreCardStages,scoreCardReStages,playEffectStages = {},{},{}
+scoreCardStages,scoreCardReStages,playEffectStages,preDiscardStages = {},{},{},{}
 editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
     {love.graphics.newImage("resources/textures/editions/holob.png"), love.graphics.newImage("resources/textures/editions/holot.png")},
     love.image.newImageData("resources/textures/editions/poly.png")}
@@ -25,7 +25,9 @@ joker.init(card,Updater,Drawer)
 local joker = joker
 
 function love.load()
-    --love.graphics.set3D(false)
+    if love.graphics.setStereoscopic then
+    love.graphics.setStereoscopic(false)
+    end
     love.graphics.setDefaultFilter("nearest","nearest")
     font18 = love.graphics.newFont("resources/m6x11plus.ttf",18)
     bigFont=love.graphics.newImage("resources/textures/testimfont.png")
@@ -43,6 +45,7 @@ function love.load()
     love.graphics.setBackgroundColor(.231,.467,.369)
     uicanvas=love.graphics.newCanvas(153,240)
     blindcan=love.graphics.newCanvas(135,71)
+    bUICan=love.graphics.newCanvas(320,240)
     local bigfntatlas={"1","2","3","4","5","6","7","8","9","0",",","$","-"}
     local x=0
     for _,v in ipairs(bigfntatlas) do
@@ -55,7 +58,7 @@ function love.load()
     money=0
     scoringDone=true
     dragMode=false
-    cante,blindrq=1,4500 --update with function to determine later
+    cante,blindrq=1,35900 --update with function to determine later
     score,dispscore,dispscoreS=0,0,"0"
     handSize=8
     updateHSizeVars(handSize)
@@ -71,18 +74,20 @@ function love.load()
     shortcut=false
     nScoringEvents=0
     love.graphics.setFont(font18)
+    joker.setDefaultStagesLoad()
     joker.addNewJoker(14,3)
-    joker.addNewJoker(15,2)
+    joker.addNewJoker(20,2)
     joker.addNewJoker(23,3)
-    joker.addNewJoker(17,1)
+    joker.addNewJoker(26,1)
     --joker.addNewJoker(18,-1)
     joker.addNewJoker(21,1)
-    joker.addNewJoker(24,-1)
+    joker.addNewJoker(12,-1)
     --joker.addNewJoker(25,0)
     card.newEnhancedDeck()
     card.drawCard(handSize)
     card.sortHand()
     updateBlind(1)
+    updateBUiCan()
     table.insert(Drawer,drawToUiCanvas)
 end
 
@@ -421,6 +426,17 @@ local function updateUiCMultOnly(dt,myid)
         chiprate=math.ceil(math.abs(dmult)/20)*(dmult>0 and 1 or -1)
     end
     dismult=dismult+(dmult/chiprate>1 and chiprate or dmult)
+end
+
+function updateBUiCan()
+    love.graphics.setCanvas(bUICan)
+    love.graphics.draw(jSlotShad,1,46)
+    love.graphics.draw(uiButts,18,188)
+    love.graphics.setColor(.793,.835,.915)
+    love.graphics.printf(#card.hand.."/"..handSize,fonttiny,145,175,33,"center")
+    love.graphics.printf(#joker.jslots.."/"..joker.maxjslots,fonttiny,105,63,39,"center")
+    love.graphics.setColor(1,1,1)
+    love.graphics.setCanvas()
 end
 
 function updateBlind(blindId)
@@ -822,6 +838,37 @@ local function preScoreAndAnimate(dt,myid)
     end
 end
 
+local tempPreDiscardStages = {}
+
+local function preDiscardEffects(dt,myid)
+    scoreTimer=scoreTimer-dt
+    if scoreTimer>0 then return end
+    local pop
+    while tempPreDiscardStages[1] do
+    pop = tempPreDiscardStages[1]()
+    table.remove(tempPreDiscardStages,1)
+    if pop then break end
+    end
+    if pop then
+        scorePop=pop
+        scorePop.time=.55
+        cardJumpTimer=.1
+        table.insert(Updater,cardJumpUpdate)
+        table.insert(Updater,scorePopUpUpdate)
+        table.insert(Updater,updateUiCanvas)
+        scoreTimer=.6
+    else
+        card.discardS(handSize)
+        cdiscards=cdiscards-1
+        updateHSizeVars(#card.hand)
+        card.sortHand()
+        cursorid[2] = cursorid[1]==1 and cursorid[2]>#card.hand and #card.hand or cursorid[2]
+        animationflag=false
+        table.remove(Updater,myid)
+        return table.insert(Updater,updateUiCanvas)
+    end
+end
+
 local function playSCards()
     animationflag=true
     card.toScore={}
@@ -842,6 +889,7 @@ local function playSCards()
         table.remove(card.handcan,tadd)
     end
     cOffset=cOffset+math.floor(cDist*#tempaddresses*.5)
+    updateBUiCan()
     card.hselect={}
     for i,v in ipairs(card.play) do
         if v.scoring then
@@ -980,27 +1028,12 @@ function love.draw(screen)
         love.graphics.print("Chips: "..curHand.bchips.."   Mult: "..curHand.bmult,200,72)
     end
     --]]
-    if shortcut then
-        love.graphics.print("Shortcut Active",200,95)
-    end
-    if fourfinger then
-        love.graphics.print("Four Fingers Active",200,110)
-    end
-    if Smeared then
-        love.graphics.print("Smeared Joker Active",200,125)
-    end
-    --[[
-    if Updater[1] and chiprate then
-        love.graphics.print("BALLS"..chiprate.."\n"..#Updater,300,40)
-    end
-    --]]
     love.graphics.setBlendMode("alpha","premultiplied")
     love.graphics.draw(uicanvas,0,0)
     love.graphics.draw(blindcan,15,6)
     love.graphics.setBlendMode("alpha","alphamultiply")
     else
-    love.graphics.draw(jSlotShad,1,46)
-    love.graphics.draw(uiButts,18,188)
+    love.graphics.draw(bUICan)
     for i,v in ipairs(card.handcan) do
         local ccard=card.hand[i]
         love.graphics.draw(v,(i-1)*cDist+cOffset+33,ccard.selected and 89 or 119 + ccard.bounce)
@@ -1025,7 +1058,6 @@ function love.draw(screen)
 end
 
 local function postDragClarity()
-    dragMode=false
     card.hselect={}
     for i,v in ipairs(card.hand) do
         if v.selected then
@@ -1033,8 +1065,29 @@ local function postDragClarity()
          end
     end
     _,_,scoreIds=unpack(idHandTypes())
+    dragMode=false
 end
 
+local function postJokeClarity()
+    joker.postDrag()
+    scoreCardStages= _G.scoreCardStages
+    scoreCardReStages = _G.scoreCardReStages
+    playEffectStages = _G.playEffectStages
+    dragMode=false
+end
+
+local function prepareDrag(dt,myid)
+    aHeldTimer = aHeldTimer-dt
+    if aHeldTimer<=0 then
+        aHeldTimer=nil
+        spamdelay=.5
+        table.insert(Updater,anticrashspam)
+        dragMode=true
+        table.remove(Updater,myid)
+    end
+end
+
+local tempAHold = nil
 function love.gamepadpressed(_,button)
     if button=="start" then
         love.event.quit()
@@ -1051,17 +1104,11 @@ function love.gamepadpressed(_,button)
         table.insert(Updater,updateUiCanvas)
     end
     --]]
-    if (button=="dpdown" or button=="dpup") and not dragMode then
-        cursorid[1]=3-cursorid[1]
-        if cursorid[1]==1 and cursorid[2]>#card.hand then
-            cursorid[2] = #card.hand
-            return
-        elseif cursorid[2]>#joker.jslots then
-            cursorid[2] = #joker.jslots
-            return
-        end
-    end
     if button=="dpleft" then
+        if aHeldTimer then
+            aHeldTimer=-1
+            dragMode=true
+        end
         if cursorid[1]==1 then
         if dragMode then
             local idref = cursorid[2]
@@ -1079,10 +1126,29 @@ function love.gamepadpressed(_,button)
         end
         cursorid[2]=cursorid[2]==1 and #card.hand or cursorid[2]-1
         elseif cursorid[1]==2 then
-            cursorid[2]=cursorid[2]==1 and #joker.jslots or cursorid[2]-1
+        if dragMode then
+            local idref = cursorid[2]
+            if idref==1 then
+                local temp,temp2=joker.jslots[1],joker.jcan[1]
+                table.remove(joker.jslots,1)
+                table.remove(joker.jcan,1)
+                table.insert(joker.jslots,temp)
+                table.insert(joker.jcan,temp2)
+            else
+                local temp,temp2=joker.jslots[idref-1],joker.jcan[idref-1]
+                joker.jslots[idref-1],joker.jcan[idref-1]=joker.jslots[idref],joker.jcan[idref]
+                joker.jslots[idref],joker.jcan[idref]=temp,temp2
+            end
+
+        end
+        cursorid[2]=cursorid[2]==1 and #joker.jslots or cursorid[2]-1
         end
     end
     if button=="dpright" then
+        if aHeldTimer then
+            aHeldTimer=-1
+            dragMode=true
+        end
         if cursorid[1]==1 then
         if dragMode then
             local idref = cursorid[2]
@@ -1100,35 +1166,47 @@ function love.gamepadpressed(_,button)
         end
         cursorid[2]=math.fmod(cursorid[2],#card.hand)+1
         elseif cursorid[1]==2 then
-            cursorid[2]=math.fmod(cursorid[2],#joker.jslots)+1
+            if dragMode then
+                local idref = cursorid[2]
+                if idref==#joker.jslots then
+                    local temp,temp2 = joker.jslots[#joker.jslots],joker.jcan[#joker.jslots]
+                    joker.jslots[#joker.jslots],joker.jcan[#joker.jcan]=nil,nil
+                    table.insert(joker.jslots,1,temp)
+                    table.insert(joker.jcan,1,temp2)
+                else
+                local temp,temp2=joker.jslots[idref+1],joker.jcan[idref+1]
+                joker.jslots[idref+1],joker.jcan[idref+1]=joker.jslots[idref],joker.jcan[idref]
+                joker.jslots[idref],joker.jcan[idref]=temp,temp2
+                end
+            end
+        cursorid[2]=math.fmod(cursorid[2],#joker.jslots)+1
         end
     end
-    if button=="leftshoulder" then
-        if dragMode and spamdelay<=0 then
-            dragMode=false
-            return postDragClarity()
+    if aHeldTimer then return end
+    if (button=="dpdown" or button=="dpup") and not dragMode then
+        cursorid[1]=3-cursorid[1]
+        if cursorid[1]==1 and cursorid[2]>#card.hand then
+            cursorid[2] = #card.hand
+            return
+        elseif cursorid[2]>#joker.jslots then
+            cursorid[2] = #joker.jslots
+            return
         end
-        dragMode= true
-        if card.hand[cursorid[2]].selected then
-            card.hselect[cursorid[2]]=nil
-        end
-        spamdelay=.5
-        table.insert(Updater,anticrashspam)
     end
     if button=="rightshoulder" then
         joker.addNewJoker(math.random(2,18),math.random(-1,3))
     end
     if button=="x" then
-        if nselect==0 or dragMode then return end
-        if cdiscards<1 then return end
+        if nselect==0 or dragMode or cdiscards<1 then return end
+        scoreTimer=-1
+        animationflag=true
         nselect=0
         chips=0 mult=0
-        card.discardS(handSize)
-        cdiscards=cdiscards-1
-        updateHSizeVars(#card.hand)
-        card.sortHand()
-        cursorid[2] = cursorid[1]==1 and cursorid[2]>#card.hand and #card.hand or cursorid[2]
-        return table.insert(Updater,updateUiCanvas)
+        tempPreDiscardStages={}
+        for _,v in ipairs(preDiscardStages) do
+            table.insert(tempPreDiscardStages,v)
+        end
+        table.insert(Updater,preDiscardEffects)
     end
     if button=="y" then
         if nselect==0 or dragMode then return end
@@ -1145,41 +1223,48 @@ function love.gamepadpressed(_,button)
         return postDragClarity()
     end
     if button=="a" then
-        if spamdelay>0 or dragMode or cursorid[1]~=1 then return end
-        local idref = cursorid[2]
-        local t = card.hand[idref]
-        if t.selected then
-            card.hand[idref].selected=false
-            card.hselect[idref]=nil
-            nselect=nselect-1
-        elseif nselect<5 then
-            card.hand[idref].selected=true
-            card.hselect[idref]=card.hand[idref]
-            nselect=nselect+1
-        end
-        --debugstring = ""
-        if nselect==0 then chips=0 mult=0 return table.insert(Updater,updateUiCanvas) end
-        local tempid = 0
-        hTypes,tempid,scoreIds=unpack(idHandTypes())
-        curHand=HandTypes[tempid]
-        --[[
-        for i,_ in pairs(hTypes) do
-            debugstring=debugstring.." + "..i
-        end
-        debugstring=debugstring.."\n"
-        for _,v in pairs(scoreIds) do
-            debugstring=debugstring.."&"..v
-        end
-        --]]
-        chips=curHand.bchips
-        mult=curHand.bmult
-        spamdelay=.3
-        table.insert(Updater,updateUiCanvas)
-        table.insert(Updater,anticrashspam)
+        if spamdelay>0 or dragMode or aHeldTimer then return end
+        aHeldTimer = .2
+        table.insert(Updater,prepareDrag)
+        tempAHold=#Updater
     end
 end
 function love.gamepadreleased(_,button)
-    if button=="leftshoulder" and spamdelay<=0 then
-        return postDragClarity()
+    if button=="a" then
+        if aHeldTimer then
+            if spamdelay>0 or dragMode or cursorid[1]~=1 then return end
+            local idref = cursorid[2]
+            local t = card.hand[idref]
+            if t.selected then
+            card.hand[idref].selected=false
+            card.hselect[idref]=nil
+            nselect=nselect-1
+            elseif nselect<5 then
+            card.hand[idref].selected=true
+            card.hselect[idref]=card.hand[idref]
+            nselect=nselect+1
+            end
+            if nselect==0 then chips=0 mult=0
+                table.insert(Updater,updateUiCanvas) 
+                aHeldTimer=nil
+                return table.remove(Updater,tempAHold)
+                end
+            local tempid = 0
+            hTypes,tempid,scoreIds=unpack(idHandTypes())
+            curHand=HandTypes[tempid]
+            chips=curHand.bchips
+            mult=curHand.bmult
+            spamdelay=.3
+            table.remove(Updater,tempAHold)
+            table.insert(Updater,updateUiCanvas)
+            table.insert(Updater,anticrashspam)
+            aHeldTimer=nil
+        else
+            if cursorid[1]==1 then
+                return postDragClarity()
+            elseif cursorid[1]==2 then
+                return postJokeClarity()
+            end
+        end
     end
 end

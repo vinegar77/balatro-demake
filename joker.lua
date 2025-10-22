@@ -2,15 +2,49 @@ local joker={init=nil,jslots={},jcan={},jspace=0,joffset=0}
 local card, Updater, Drawer
 joker.jokerAtlas = love.graphics.newImage("resources/textures/jokers.png")
 joker.maxjslots = 5
-local scoreCardStages = scoreCardStages
-local scoreCardReStages = scoreCardReStages
-local playEffectStages = playEffectStages
+local scoreCardStagesl = scoreCardStages
+local scoreCardReStagesl = scoreCardReStages
+local playEffectStagesl = playEffectStages
 
 function joker.init(c,u,d)
     card=c
     Updater = u
     Drawer = d
 end
+
+local scoreStagesDefault={}
+
+function joker.setDefaultStagesLoad()
+    for i=1,2 do
+        scoreStagesDefault[i]={}
+        for j,v in ipairs(scoreCardStagesl[i]) do
+            scoreStagesDefault[i][j]=v
+        end
+    end
+    scoreStagesDefault[3]={}
+    for i=1,2 do
+        scoreStagesDefault[i+3]={}
+        for j,v in ipairs(scoreCardReStagesl[i]) do
+            scoreStagesDefault[i+3][j]=v
+        end
+    end
+end
+
+function joker.returnDefaultStages()
+    local temp,tempRe = {{},{},{}},{{},{}}
+    for i=1,2 do
+        for j,v in ipairs(scoreStagesDefault[i]) do
+            temp[i][j]=v
+        end
+    end
+    for i=1,2 do
+        for j,v in ipairs(scoreStagesDefault[i+3]) do
+            tempRe[i][j]=v
+        end
+    end
+    return temp, tempRe
+end
+
 
 local foil=editDraw[1]
 local holo = editDraw[2]
@@ -132,7 +166,6 @@ function joker.addNewJoker(id,edit)
         joker.drawModJoker(id,edit,temp1,temp2)
     else
         love.graphics.setCanvas(temp1)
-        print(love.graphics.getBlendMode())
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setCanvas()
     end
@@ -141,36 +174,58 @@ function joker.addNewJoker(id,edit)
     if newJoker.onBuy then newJoker.onBuy() end
     newJoker.bounce=0
     newJoker.edit = edit
+    if edit == -1 then
+        joker.maxjslots = joker.maxjslots+1
+    end
     joker.addStages(newJoker)
     joker.jspace=(j<4 and 100 or math.floor(200/(j-1)))
     joker.joffset=(j>2 and 4 or j==2 and 54 or j==1 and 104)
+    for _,v in ipairs(joker.jslots) do
+        if v.shiftUpdate then v.shiftUpdate() end
+    end
 end
 function joker.addStages(cjoker)
     if cjoker.onPlayEffect then
-        table.insert(playEffectStages,cjoker.onPlayEffect)
+        table.insert(playEffectStagesl,cjoker.onPlayEffect)
     end
     if cjoker.onScore then
-        table.insert(scoreCardStages[1],cjoker.onScore)
+        table.insert(scoreCardStagesl[1],cjoker.onScore)
     end
     if cjoker.onHand then
-        table.insert(scoreCardStages[2],cjoker.onHand)
+        table.insert(scoreCardStagesl[2],cjoker.onHand)
     end
     if cjoker.edit then
         if cjoker.edit==1 then
-            table.insert(scoreCardStages[3],foilScore)
+            table.insert(scoreCardStagesl[3],foilScore)
         end
         if cjoker.edit==2 then
-            table.insert(scoreCardStages[3],holoScore)
+            table.insert(scoreCardStagesl[3],holoScore)
         end
     end
     if cjoker.onJoker then
         --scoreCardStages[3][#scoreCardStages[3]+1]=cjoker.onJoker
-        table.insert(scoreCardStages[3],cjoker.onJoker)
+        table.insert(scoreCardStagesl[3],cjoker.onJoker)
     else
-        table.insert(scoreCardStages[3],false)
+        table.insert(scoreCardStagesl[3],false)
     end
     if cjoker.edit==3 then
-        table.insert(scoreCardStages[3],polyScore)
+        table.insert(scoreCardStagesl[3],polyScore)
+    end
+    if cjoker.onDiscard then
+        table.insert(preDiscardStages,cjoker.onDiscard)
+    end
+end
+
+function joker.postDrag()
+    scoreCardStages,scoreCardReStages = joker.returnDefaultStages()
+    scoreCardStagesl,scoreCardReStagesl = scoreCardStages,scoreCardReStages
+    preDiscardStages={}
+    playEffectStages = {}
+    playEffectStagesl=playEffectStages
+    for i,v in ipairs(joker.jslots) do
+        if v.myjslotid then v.myjslotid = i end
+        if v.shiftUpdate then v.shiftUpdate() end
+        joker.addStages(v)
     end
 end
 
