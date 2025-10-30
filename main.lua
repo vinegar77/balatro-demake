@@ -75,13 +75,13 @@ function love.load()
     nScoringEvents=0
     love.graphics.setFont(font18)
     joker.setDefaultStagesLoad()
-    joker.addNewJoker(14,3)
+    joker.addNewJoker(14,1)
     joker.addNewJoker(20,2)
-    joker.addNewJoker(23,3)
+    joker.addNewJoker(23,1)
     joker.addNewJoker(26,1)
     --joker.addNewJoker(18,-1)
     joker.addNewJoker(21,1)
-    joker.addNewJoker(12,-1)
+    joker.addNewJoker(12,1)
     --joker.addNewJoker(25,0)
     card.newEnhancedDeck()
     card.drawCard(handSize)
@@ -430,12 +430,14 @@ end
 
 function updateBUiCan()
     love.graphics.setCanvas(bUICan)
-    love.graphics.draw(jSlotShad,1,46)
-    love.graphics.draw(uiButts,18,188)
+    love.graphics.setColor(.231,.467,.369)
+    love.graphics.rectangle("fill",0,0,320,240)
     love.graphics.setColor(.793,.835,.915)
     love.graphics.printf(#card.hand.."/"..handSize,fonttiny,145,175,33,"center")
     love.graphics.printf(#joker.jslots.."/"..joker.maxjslots,fonttiny,105,63,39,"center")
     love.graphics.setColor(1,1,1)
+    love.graphics.draw(jSlotShad,1,46)
+    love.graphics.draw(uiButts,18,188)
     love.graphics.setCanvas()
 end
 
@@ -1077,7 +1079,7 @@ local function postJokeClarity()
 end
 
 local function prepareDrag(dt,myid)
-    aHeldTimer = aHeldTimer-dt
+    aHeldTimer = aHeldTimer and aHeldTimer-dt or -1
     if aHeldTimer<=0 then
         aHeldTimer=nil
         spamdelay=.5
@@ -1232,7 +1234,8 @@ end
 function love.gamepadreleased(_,button)
     if button=="a" then
         if aHeldTimer then
-            if spamdelay>0 or dragMode or cursorid[1]~=1 then return end
+            if spamdelay>0 or dragMode or cursorid[1]~=1 then aHeldTimer=nil
+                return table.remove(Updater,tempAHold) end
             local idref = cursorid[2]
             local t = card.hand[idref]
             if t.selected then

@@ -40,8 +40,9 @@ function card.newEnhancedDeck()
     local polyify = polyify
     for i=1,4 do
         for j=1,13 do
-            table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=love.math.random(0,4),edit=math.random()>.3 and 0 or math.random(1,3),bounce=0})
+            --table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=love.math.random(0,4),edit=math.random()>.3 and 0 or math.random(1,3),bounce=0})
             --table.insert(card.fdeck,{rank=j,suite=2*love.math.random(1,2),mod=love.math.random(0,8),seal=0,edit=3,bounce=0})
+            table.insert(card.fdeck,{rank=13,suite=3,mod=love.math.random(0,8),seal=0,edit=love.math.random(0,3),bounce=0})
             table.insert(card.deck,card.fdeck[#card.fdeck])
         end
     end
