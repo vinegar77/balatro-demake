@@ -18,15 +18,42 @@ card.cardfqs=cardfqs
 card.cardmqs=cardmqs
 local foil = editDraw[1]
 local holo = editDraw[2]
+local polyimage = editDraw[3]
 local tempfront = love.image.newImageData("resources/textures/cardfronts.png")
 local tempmid = love.image.newImageData("resources/textures/cardmids.png")
+local tempC = love.graphics.newCanvas(41,55)
 
+-- copied from joker
+local function h2rbg(p,q,h)
+    h = math.fmod(h,1)*6
+    return h<1 and p+(q-p)*h or h<3 and q or h<4 and p+(q-p)*(4-h) or p
+end
+
+local function polyify(x,y,r,g,b,a)
+    local lo,hi = math.min(r,g,b),math.max(r,g,b)
+    local d = hi-lo
+    if (d==0) then return r,g,b,a end
+    local sum = hi+lo
+    local h,s,l = 0,0,.5*sum
+    local sog = sum<1 and d/(sum) or d/(2-sum)
+    local hog = (hi==r and (g-b)/d + (g<b and 6 or 0) or hi==g and (b-r)/d+2 or (r-g)/d + 4)/6
+    r, g, b = polyimage:getPixel(x,y)
+    lo, hi = math.min(r,g,b),math.max(r,g,b)
+    d = hi-lo
+    sum = hi+lo
+    s = sum<1 and d/sum or d/(2-sum)
+    s = (s+sog)/2
+    if s<.0001 then return l,l,l,a end
+    h = (hi==r and (g-b)/d + (g<b and 6 or 0) or hi==g and (b-r)/d+2 or (r-g)/d + 4)/6
+    h = h+.3*s*hog+hueshift
+    l = l - (l<.45 and .08 or 0)
+    local q = l<.5 and l*(.9+s) or l+s-l*s
+    local p = 2*l-q
+    return h2rbg(p,q,h+1/3),h2rbg(p,q,h),h2rbg(p,q,h-1/3),a
+end
 
 --Creates a full basic new deck
 function card.newBasicDeck()
-    local polyimage = polyimage
-    local h2rbg = h2rbg
-    local polyify = polyify
     for i=1,4 do
         for j=1,13 do
             table.insert(card.fdeck,{rank=j,suite=i,mod=0,seal=0,edit=0,bounce=0})
@@ -36,8 +63,6 @@ function card.newBasicDeck()
 end
 
 function card.newEnhancedDeck()
-    local h2rbg = h2rbg
-    local polyify = polyify
     for i=1,4 do
         for j=1,13 do
             --table.insert(card.fdeck,{rank=j,suite=i,mod=love.math.random(0,8),seal=love.math.random(0,4),edit=math.random()>.3 and 0 or math.random(1,3),bounce=0})
@@ -48,20 +73,20 @@ function card.newEnhancedDeck()
     end
 end
 
+local tempmidNew = love.image.newImageData(39,53)
+local tempfrontNew = love.image.newImageData(39,53)
 local function doPolychrome()
     card.handcan[#card.hand]=love.graphics.newCanvas(41,55)
     love.graphics.setCanvas(card.handcan[#card.hand])
     local ccard = card.hand[#card.hand]
-    local tempmidNew = love.image.newImageData(39,53)
     tempmidNew:paste(tempmid,0,0,math.fmod(ccard.mod*41,246)+1,ccard.mod<6 and 1 or 56,39,53)
     hueshift=1.3
     tempmidNew:mapPixel(polyify)
     local tempA = love.graphics.newImage(tempmidNew)
     love.graphics.draw(tempA,1,1)
-    tempmidNew,tempA = nil,nil
+    tempA = nil
     if ccard.mod~=1 then
     hueshift=.65
-    local tempfrontNew = love.image.newImageData(39,53)
     tempfrontNew:paste(tempfront,0,0,39*(ccard.rank-1),53*(ccard.suite-1),39,53)
     tempfrontNew:mapPixel(polyify)
     local tempB = love.graphics.newImage(tempfrontNew)
@@ -92,14 +117,18 @@ function card.drawCard(num)
         end
         if drewCard.edit~=0 then
             love.graphics.setCanvas()
-            local tempC = love.graphics.newCanvas(41,55)
             love.graphics.setCanvas(tempC)
+            love.graphics.setBlendMode("replace","premultiplied")
+            love.graphics.setColor(1,1,1,0)
+            love.graphics.rectangle("fill",0,0,41,55)
+            love.graphics.setBlendMode("alpha","alphamultiply")
+            love.graphics.setColor(1,1,1,1)
             love.graphics.draw(card.handcan[#card.handcan])
             if drewCard.edit==1 then
                 love.graphics.setBlendMode("screen","premultiplied")
                 love.graphics.draw(foil[1],1,1)
                 love.graphics.setBlendMode("alpha")
-                love.graphics.setColor(1,1,1,.6)
+                love.graphics.setColor(1,1,1,.8)
                 love.graphics.draw(foil[2],1,1)
                 love.graphics.setColor(1,1,1,1)
             else

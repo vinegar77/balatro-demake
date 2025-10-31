@@ -7,29 +7,40 @@ end
 local cursorid,cursor,nselect,scoreIds,animationflag,score,ui,uicanvas
 local dischips,dismult,chiprate,multrate,spamdelay, cante, blindcan, blindrq, dispscore, imult, ichips, scoringPopup, cDist, cOffset, dragMode, cursorD
 local updateBlind, bigFont, writeBig, dispscoreS, noUpMult, jSlotShad, nScoringEvents, uiButts, aHeldTimer, bUICan
-local font18,fonttiny, scoreTimer, prescore, playCardStartPos, scoringDone, nhcard, shand, njoker, sjoke
-local Updater,Drawer,bigFontq={},{},{}
-local drawToUiCanvas, calcAddScore
+local font18,fonttiny, scoreTimer, prescore, playCardStartPos, nhcard, shand, njoker, sjoke
+local Updater,Drawer,bigFontq,priorityDrawer={},{},{},{}
+local drawToUiCanvas, calcAddScore, drawHandCards, drawJokers, topScreenDraw, updateBUiCan
 card,hTypes,fourfinger,shortcut,curHand,chips,mult,money,chands,cdiscards,maxhands,maxdiscards,handSize,joker=nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil
 scoreCardStages,scoreCardReStages,playEffectStages,preDiscardStages = {},{},{},{}
-editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
+local scoreCardScoringStages,scoreCardHandStages,scoreCardScoringReStages,scoreCardHandReStages
+
+local function loadScreenDraw(screen,_)
+    if screen=="bottom" then
+        love.graphics.print("Loading...",20,20)
+    end
+end
+
+local card, scoreCardStages, scoreCardReStages, playEffectStages,joker,jumpMap
+local loadCoro = coroutine.create(function ()
+    editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
     {love.graphics.newImage("resources/textures/editions/holob.png"), love.graphics.newImage("resources/textures/editions/holot.png")},
     love.image.newImageData("resources/textures/editions/poly.png")}
-local scoreCardStages=scoreCardStages
-local scoreCardReStages = scoreCardReStages
-local playEffectStages = playEffectStages
-card=require "card"
-joker=require "joker"
-local card = card
-joker.init(card,Updater,Drawer)
-local joker = joker
-
-function love.load()
-    if love.graphics.setStereoscopic then
-    love.graphics.setStereoscopic(false)
-    end
-    love.graphics.setDefaultFilter("nearest","nearest")
-    font18 = love.graphics.newFont("resources/m6x11plus.ttf",18)
+    scoreCardStages=_G.scoreCardStages
+    scoreCardReStages = _G.scoreCardReStages
+    playEffectStages = _G.playEffectStages
+    coroutine.yield()
+    _G.card=require "card"
+    _G.joker=require "joker"
+    card = _G.card
+    _G.joker.init(card,Updater,Drawer)
+    joker = _G.joker
+    jumpMap = {card.play,card.hand,joker.jslots}
+    coroutine.yield()
+    scoreCardStages[1]=scoreCardScoringStages
+    scoreCardStages[2]=scoreCardHandStages
+    scoreCardStages[3]={}
+    scoreCardReStages[1]=scoreCardScoringReStages
+    scoreCardReStages[2]=scoreCardHandReStages
     bigFont=love.graphics.newImage("resources/textures/testimfont.png")
     fonttiny=love.graphics.newFont("resources/m6x11plus.ttf",11)
     cursor=love.graphics.newImage("resources/textures/cursor.png")
@@ -42,7 +53,7 @@ function love.load()
     love.graphics.newImage("resources/textures/popup/cash.png"),
     love.graphics.newImage("resources/textures/popup/mult.png"),
     love.graphics.newImage("resources/textures/popup/mult.png")}
-    love.graphics.setBackgroundColor(.231,.467,.369)
+    coroutine.yield()
     uicanvas=love.graphics.newCanvas(153,240)
     blindcan=love.graphics.newCanvas(135,71)
     bUICan=love.graphics.newCanvas(320,240)
@@ -52,11 +63,49 @@ function love.load()
         bigFontq[v]=love.graphics.newQuad(x,0,(v=="," and 6 or 14),24,bigFont)
         x=x+(v=="," and 6 or 14)
     end
+    coroutine.yield()
+    joker.setDefaultStagesLoad()
+    joker.addNewJoker(14,1)
+    joker.addNewJoker(20,2)
+    joker.addNewJoker(23,3)
+    joker.addNewJoker(26,1)
+    --joker.addNewJoker(18,-1)
+    joker.addNewJoker(21,-1)
+    joker.addNewJoker(12,-1)
+    --joker.addNewJoker(25,0)
+    card.newEnhancedDeck()
+    coroutine.yield()
+    card.drawCard(handSize)
+    card.sortHand()
+    coroutine.yield()
+    updateBlind(1)
+    updateBUiCan()
+    table.remove(Drawer,1)
+    love.graphics.setBackgroundColor(.231,.467,.369)
+    table.insert(priorityDrawer,topScreenDraw)
+    table.insert(priorityDrawer,drawJokers)
+    table.insert(priorityDrawer,drawHandCards)
+    table.insert(Drawer,drawToUiCanvas)
+end)
+
+local function loadCoroManager(_,myid)
+    if not coroutine.resume(loadCoro) then
+        table.remove(Updater,myid)
+    end
+end
+
+
+function love.load()
+    if love.graphics.setStereoscopic then
+    love.graphics.setStereoscopic(false)
+    end
+    love.graphics.setDefaultFilter("nearest","nearest")
+    font18 = love.graphics.newFont("resources/m6x11plus.ttf",18)
+    love.graphics.setFont(font18)
     chips,dischips=0,0
     mult,dismult=0,0
     spamdelay=0
     money=0
-    scoringDone=true
     dragMode=false
     cante,blindrq=1,35900 --update with function to determine later
     score,dispscore,dispscoreS=0,0,"0"
@@ -73,22 +122,9 @@ function love.load()
     fourfinger=false
     shortcut=false
     nScoringEvents=0
-    love.graphics.setFont(font18)
-    joker.setDefaultStagesLoad()
-    joker.addNewJoker(14,1)
-    joker.addNewJoker(20,2)
-    joker.addNewJoker(23,1)
-    joker.addNewJoker(26,1)
-    --joker.addNewJoker(18,-1)
-    joker.addNewJoker(21,1)
-    joker.addNewJoker(12,1)
-    --joker.addNewJoker(25,0)
-    card.newEnhancedDeck()
-    card.drawCard(handSize)
-    card.sortHand()
-    updateBlind(1)
-    updateBUiCan()
-    table.insert(Drawer,drawToUiCanvas)
+    table.insert(Updater,loadCoroManager)
+    love.graphics.setBackgroundColor(0.31,0.38,0.40,1)
+    table.insert(Drawer,loadScreenDraw)
 end
 
 --massive.....
@@ -354,7 +390,7 @@ function writeBig(str,x,y,lim,align)
 end
 
 function drawToUiCanvas(dt,myid)
-    --love.graphics.setBlendMode("alpha","alphamultiply")
+    love.graphics.setBlendMode("alpha","alphamultiply")
     if not uicanvas then
         return
     end
@@ -472,7 +508,7 @@ end
 local ccardStage = 1
 local ccardReStage=1
 
-local scoreCardScoringStages = {
+scoreCardScoringStages = {
     function (rank,_,mod,_,_,_)
         --stage 1 (always returns nonzero)
         local dchip= (rank==99 and 50 or rank==14 and 11 or rank>9 and 10 or rank)+(mod==3 and 30 or 0)
@@ -528,7 +564,7 @@ local scoreCardScoringStages = {
     end
 }
 
-local scoreCardHandStages = {
+scoreCardHandStages = {
     function (_,_,mod,_,_)
         if mod==7 then
             mult=mult*1.5
@@ -540,27 +576,20 @@ local scoreCardHandStages = {
     end
 }
 
-scoreCardStages[1]=scoreCardScoringStages
-scoreCardStages[2]=scoreCardHandStages
-scoreCardStages[3]={}
 
-
-local scoreCardScoringReStages = {
+scoreCardScoringReStages = {
     function (_,_,_,seal,_)
         if seal~=4 then return nil end
         return 1
     end
 }
 
-local scoreCardHandReStages = {
+scoreCardHandReStages = {
     function (_,_,_,seal,_)
         if seal~=4 then return nil end
         return 1
     end
 }
-
-scoreCardReStages[1]=scoreCardScoringReStages
-scoreCardReStages[2]=scoreCardHandReStages
 
 local scorePop
 
@@ -641,7 +670,6 @@ local function scorePopUpUpdate(dt,myid)
 end
 
 local cardJumpTimer
-local jumpMap = {card.play,card.hand,joker.jslots}
 
 local function cardJumpUpdate(dt,myid)
     cardJumpTimer=cardJumpTimer-dt
@@ -1004,7 +1032,7 @@ function love.update(dt)
     debugstring=debugstring..i
     end
     --]]
-    debugstring=love.timer.getFPS().."\n"..nScoringEvents
+    debugstring=love.timer.getFPS().."\n"..nScoringEvents.."\n"..#Drawer
 end
 
 
@@ -1016,25 +1044,19 @@ local function anticrashspam(dt,myid)
 end
 
 
-
-
-function love.draw(screen)
+function topScreenDraw(screen,_)
+    if screen=="bottom" then return end
     love.graphics.setBlendMode("alpha","alphamultiply")
-    if screen~="bottom" then
-        love.graphics.setBlendMode("alpha","alphamultiply")
-        love.graphics.print(debugstring,160,20)
-    --[[ Debug Text
-    love.graphics.print(#card.hand.."\n"..cursorid.."\n"..#card.hselect.."\nFPS: "..love.timer.getFPS())
-    if nselect>0 then
-        love.graphics.print(curHand.name,200,45)
-        love.graphics.print("Chips: "..curHand.bchips.."   Mult: "..curHand.bmult,200,72)
-    end
-    --]]
+    love.graphics.print(debugstring,160,20)
     love.graphics.setBlendMode("alpha","premultiplied")
     love.graphics.draw(uicanvas,0,0)
     love.graphics.draw(blindcan,15,6)
     love.graphics.setBlendMode("alpha","alphamultiply")
-    else
+end
+
+function drawHandCards(screen,myid)
+    if screen~="bottom" then return end
+    love.graphics.setBlendMode("alpha","premultiplied")
     love.graphics.draw(bUICan)
     for i,v in ipairs(card.handcan) do
         local ccard=card.hand[i]
@@ -1043,6 +1065,12 @@ function love.draw(screen)
             love.graphics.draw(dragMode and cursorD or cursor,(i-1)*cDist+cOffset+33,ccard.selected and 89 or 119)
         end
     end
+    love.graphics.setBlendMode("alpha","alphamultiply")
+end
+
+function drawJokers(screen,_)
+    if screen~="bottom" then return end
+    love.graphics.setBlendMode("alpha","premultiplied")
     local joff,jdist = joker.joffset,joker.jspace
     for i,v in ipairs(joker.jcan) do
         love.graphics.draw(v,(i-1)*jdist+joff,6 + joker.jslots[i].bounce)
@@ -1051,12 +1079,16 @@ function love.draw(screen)
         end
     end
     love.graphics.setBlendMode("alpha","alphamultiply")
-    end
+end
+
+function love.draw(screen)
     love.graphics.setBlendMode("alpha","alphamultiply")
+    for i=#priorityDrawer,1,-1 do
+        priorityDrawer[i](screen,i)
+    end
     for i=#Drawer,1,-1 do
         Drawer[i](screen,i)
     end
-    --love.graphics.rectangle("fill",-2,-2,1,1)
 end
 
 local function postDragClarity()

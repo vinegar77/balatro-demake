@@ -1,10 +1,13 @@
 local joker={init=nil,jslots={},jcan={},jspace=0,joffset=0}
 local card, Updater, Drawer
 joker.jokerAtlas = love.graphics.newImage("resources/textures/jokers.png")
+local jokeImData = love.image.newImageData("resources/textures/jokers.png")
 joker.maxjslots = 5
 local scoreCardStagesl = scoreCardStages
 local scoreCardReStagesl = scoreCardReStages
 local playEffectStagesl = playEffectStages
+local tempP = love.graphics.newCanvas(39,53)
+local tempA = love.image.newImageData(39,53)
 
 function joker.init(c,u,d)
     card=c
@@ -48,25 +51,20 @@ end
 
 local foil=editDraw[1]
 local holo = editDraw[2]
-polyimage=editDraw[3]
-hueshift=0
-local polyimage=polyimage
+local polyimage=editDraw[3]
+local hueshift=0
 --global psuedo shaders
 
-function negate(_,_,r,g,b,a)
+local function negate(_,_,r,g,b,a)
     return 1.05-.88*b, 1.28-g, 1.3-.978*r, a
 end
 
-local negate = negate
-
-function h2rbg(p,q,h)
+local function h2rbg(p,q,h)
     h = math.fmod(h,1)*6
     return h<1 and p+(q-p)*h or h<3 and q or h<4 and p+(q-p)*(4-h) or p
 end
 
-local h2rbg = h2rbg
-
-function polyify(x,y,r,g,b,a)
+local function polyify(x,y,r,g,b,a)
     local lo,hi = math.min(r,g,b),math.max(r,g,b)
     local d = hi-lo
     if (d==0) then return r,g,b,a end
@@ -89,17 +87,20 @@ function polyify(x,y,r,g,b,a)
     return h2rbg(p,q,h+1/3),h2rbg(p,q,h),h2rbg(p,q,h-1/3),a
 end
 
-local polyify = polyify
-
 function joker.drawModJoker(id,edit,temp1,temp2)
     if edit==1 then
-        local tempP = love.graphics.newCanvas(39,53)
         love.graphics.setCanvas(tempP)
+        love.graphics.setBlendMode("replace")
+        love.graphics.setColor(1,1,1,0)
+        love.graphics.rectangle("fill",0,0,39,53)
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(1,1,1,1)
+
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setBlendMode("screen")
         love.graphics.draw(foil[1])
         love.graphics.setBlendMode("alpha")
-        love.graphics.setColor(1,1,1,.6)
+        love.graphics.setColor(1,1,1,.8)
         love.graphics.draw(foil[2])
         love.graphics.setColor(1,1,1,1)
         love.graphics.setBlendMode("replace")
@@ -114,8 +115,13 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         return
     end
     if edit==2 then
-        local tempA = love.graphics.newCanvas(39,53)
-        love.graphics.setCanvas(tempA)
+        love.graphics.setCanvas(tempP)
+        love.graphics.setBlendMode("replace")
+        love.graphics.setColor(1,1,1,0)
+        love.graphics.rectangle("fill",0,0,39,53)
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(1,1,1,1)
+
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setBlendMode("multiply","premultiplied")
         love.graphics.draw(holo[1])
@@ -129,14 +135,11 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         love.graphics.setBlendMode("alpha")
         love.graphics.setCanvas()
         love.graphics.setCanvas(temp1)
-        love.graphics.draw(tempA)
+        love.graphics.draw(tempP)
         return love.graphics.setCanvas()
     end
     if edit==3 then
-        local tempA = love.image.newImageData(39,53)
-        local tempB = love.image.newImageData("resources/textures/jokers.png")
-        tempA:paste(tempB,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
-        tempB=nil
+        tempA:paste(jokeImData,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
         hueshift=love.math.random()
         tempA:mapPixel(polyify)
         hueshift=0
@@ -145,10 +148,7 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         love.graphics.draw(tempC)
         return love.graphics.setCanvas()
     end
-    local tempA = love.image.newImageData(39,53)
-    local tempB = love.image.newImageData("resources/textures/jokers.png")
-    tempA:paste(tempB,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
-    tempB=nil
+    tempA:paste(jokeImData,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
     tempA:mapPixel(negate)
     local tempC = love.graphics.newImage(tempA)
     love.graphics.setCanvas(temp1)
