@@ -22,6 +22,7 @@ end
 
 local card, scoreCardStages, scoreCardReStages, playEffectStages,joker,jumpMap
 local loadCoro = coroutine.create(function ()
+    coroutine.yield()
     editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
     {love.graphics.newImage("resources/textures/editions/holob.png"), love.graphics.newImage("resources/textures/editions/holot.png")},
     love.image.newImageData("resources/textures/editions/poly.png")}
@@ -64,16 +65,23 @@ local loadCoro = coroutine.create(function ()
         x=x+(v=="," and 6 or 14)
     end
     coroutine.yield()
-    joker.setDefaultStagesLoad()
-    joker.addNewJoker(14,1)
-    joker.addNewJoker(20,2)
-    joker.addNewJoker(23,3)
-    joker.addNewJoker(26,1)
-    --joker.addNewJoker(18,-1)
-    joker.addNewJoker(21,-1)
-    joker.addNewJoker(12,-1)
-    --joker.addNewJoker(25,0)
     card.newEnhancedDeck()
+    joker.setDefaultStagesLoad()
+    joker.addNewJoker(28,1)
+    joker.addNewJoker(34,2)
+    joker.addNewJoker(40,3)
+    print("added bp")
+    joker.addNewJoker(42,1)
+    print("added after bp")
+    coroutine.yield()
+    joker.addNewJoker(33,-1)
+    joker.addNewJoker(35,-1)
+    joker.addNewJoker(38,-1)
+    joker.addNewJoker(32,0)
+    joker.addNewJoker(41,-1)
+    scoreCardStages= _G.scoreCardStages
+    scoreCardReStages = _G.scoreCardReStages
+    playEffectStages = _G.playEffectStages
     coroutine.yield()
     card.drawCard(handSize)
     card.sortHand()
@@ -279,7 +287,7 @@ local function idHandTypes()
         end
     end
     -- Flush Check
-    if #sortedS>(fourfinger and 3 or 4) then
+    if #sortedS>(fourfinger and 3 or 4) and sortedS[1]~=99 then
         local last=card.getSuiteHand(sortedSids[1])
         local superTemp=2
         for i=2,#sortedS do
@@ -300,7 +308,7 @@ local function idHandTypes()
                     if i==2 and ccard==card.getSuiteHand(sortedSids[3])then
                         nonscoreidf=1
                         last = ccard
-                    else
+                    elseif ccard~=-4 then
                     nonscoreidf=i
                     end
                 else
@@ -505,8 +513,8 @@ function love.chance(denominator)
     return love.math.random(1,denominator)==1
 end
 
-local ccardStage = 1
-local ccardReStage=1
+ccardStage = 1
+ccardReStage=1
 
 scoreCardScoringStages = {
     function (rank,_,mod,_,_,_)
@@ -614,6 +622,9 @@ local function scoreCardScoring(ccard)
     end
     if pop then
         ccardStage=1
+        if type(pop)=="table" then
+            return {str="Again!",id=5,key=pop.key,drawLoc=3}
+        end
         return {str="Again!",id=5}
     end
     shouldRetrigger=false
@@ -673,10 +684,10 @@ local cardJumpTimer
 
 local function cardJumpUpdate(dt,myid)
     cardJumpTimer=cardJumpTimer-dt
-    jumpMap[scorePop.drawLoc][scorePop.key].bounce=math.floor(-3*math.sin(cardJumpTimer*math.pi*15)-30*cardJumpTimer)
+    scorePop.jumper.bounce=math.floor(-3*math.sin(cardJumpTimer*math.pi*15)-30*cardJumpTimer)
     if cardJumpTimer<0 then
         table.remove(Updater,myid)
-        jumpMap[scorePop.drawLoc][scorePop.key].bounce=0
+        scorePop.jumper.bounce=0
     end
 end
 
@@ -706,6 +717,7 @@ local function jokerScoreAndAnimate(dt,myid)
     scorePop.key = scorePop.key or njoker
     njoker = njoker+1
     scorePop.drawLoc=3
+    scorePop.jumper=scorePop.jumper or jumpMap[scorePop.drawLoc][scorePop.key]
     scorePop.time=.6
     cardJumpTimer=.1+dt
     if scorePop.id==2 then
@@ -764,6 +776,7 @@ local function handScoreAndAnimate(dt,myid)
     scorePop.drawLoc = scorePop.drawLoc or 2
     scorePop.bigStage = 2
     scorePop.key = scorePop.key or nhcard
+    scorePop.jumper=scorePop.jumper or jumpMap[scorePop.drawLoc][scorePop.key]
     scorePop.time=.6
     cardJumpTimer=.1+dt
     if scorePop.id==2 then
@@ -820,6 +833,7 @@ local function scoreAndAnimate(dt,myid)
     scorePop.bigStage=1
     scorePop.key=scorePop.key or card.toScore[1].playKey
     scorePop.time=.6
+    scorePop.jumper=scorePop.jumper or jumpMap[scorePop.drawLoc][scorePop.key]
     cardJumpTimer=.1+dt
     if scorePop.id==2 then
     table.insert(Updater,cardJumpUpdate)
@@ -853,6 +867,7 @@ local function preScoreAndAnimate(dt,myid)
     if pop then
         nScoringEvents=nScoringEvents+1
         scorePop=pop
+        scorePop.jumper=scorePop.jumper or jumpMap[scorePop.drawLoc][scorePop.key]
         scorePop.time=.55
         cardJumpTimer=.1
         table.insert(Updater,cardJumpUpdate)
@@ -881,6 +896,7 @@ local function preDiscardEffects(dt,myid)
     end
     if pop then
         scorePop=pop
+        scorePop.jumper=scorePop.jumper or jumpMap[scorePop.drawLoc][scorePop.key]
         scorePop.time=.55
         cardJumpTimer=.1
         table.insert(Updater,cardJumpUpdate)
@@ -920,7 +936,6 @@ local function playSCards()
     end
     cOffset=cOffset+math.floor(cDist*#tempaddresses*.5)
     updateBUiCan()
-    card.hselect={}
     for i,v in ipairs(card.play) do
         if v.scoring then
             v.playKey=i
@@ -944,6 +959,7 @@ local function postScoreReset()
     card.play={}
     card.playcan={}
     card.toScore={}
+    card.hselect={}
     cursorid={1,1}
     card.drawCard(math.max(handSize-#card.hand,0))
     card.sortHand()

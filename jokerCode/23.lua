@@ -1,5 +1,6 @@
 local me = {}
 local cchips = 0
+me.copyIndx={"onJoker"}
 
 function me.onBuy()
     me.myjslotid=#joker.jslots

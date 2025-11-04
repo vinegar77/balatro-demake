@@ -9,6 +9,7 @@ local playEffectStagesl = playEffectStages
 local tempP = love.graphics.newCanvas(39,53)
 local tempA = love.image.newImageData(39,53)
 
+local cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,29,30,36}
 function joker.init(c,u,d)
     card=c
     Updater = u
@@ -87,8 +88,9 @@ local function polyify(x,y,r,g,b,a)
     return h2rbg(p,q,h+1/3),h2rbg(p,q,h),h2rbg(p,q,h-1/3),a
 end
 
-function joker.drawModJoker(id,edit,temp1,temp2)
+function joker.drawModJoker(id,edit,temp1)
     if edit==1 then
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
         love.graphics.setCanvas(tempP)
         love.graphics.setBlendMode("replace")
         love.graphics.setColor(1,1,1,0)
@@ -115,6 +117,7 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         return
     end
     if edit==2 then
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
         love.graphics.setCanvas(tempP)
         love.graphics.setBlendMode("replace")
         love.graphics.setColor(1,1,1,0)
@@ -161,10 +164,10 @@ function joker.addNewJoker(id,edit)
     package.loaded["jokerCode/"..id]=nil
     joker.jslots[#joker.jslots+1] = newJoker
     local temp1 = love.graphics.newCanvas(39,53)
-    local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
     if edit and edit~=0 then
-        joker.drawModJoker(id,edit,temp1,temp2)
+        joker.drawModJoker(id,edit,temp1)
     else
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
         love.graphics.setCanvas(temp1)
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setCanvas()
@@ -177,12 +180,9 @@ function joker.addNewJoker(id,edit)
     if edit == -1 then
         joker.maxjslots = joker.maxjslots+1
     end
-    joker.addStages(newJoker)
     joker.jspace=(j<4 and 100 or math.floor(200/(j-1)))
     joker.joffset=(j>2 and 4 or j==2 and 54 or j==1 and 104)
-    for _,v in ipairs(joker.jslots) do
-        if v.shiftUpdate then v.shiftUpdate() end
-    end
+    joker.postDrag()
 end
 function joker.addStages(cjoker)
     if cjoker.onPlayEffect then
@@ -191,8 +191,14 @@ function joker.addStages(cjoker)
     if cjoker.onScore then
         table.insert(scoreCardStagesl[1],cjoker.onScore)
     end
+    if cjoker.onScoreRe then
+        table.insert(scoreCardReStagesl[1],cjoker.onScoreRe)
+    end
     if cjoker.onHand then
         table.insert(scoreCardStagesl[2],cjoker.onHand)
+    end
+    if cjoker.onHandRe then
+        table.insert(scoreCardReStagesl[2],cjoker.onHandRe)
     end
     if cjoker.edit then
         if cjoker.edit==1 then
@@ -203,7 +209,6 @@ function joker.addStages(cjoker)
         end
     end
     if cjoker.onJoker then
-        --scoreCardStages[3][#scoreCardStages[3]+1]=cjoker.onJoker
         table.insert(scoreCardStagesl[3],cjoker.onJoker)
     else
         table.insert(scoreCardStagesl[3],false)
@@ -223,8 +228,8 @@ function joker.postDrag()
     playEffectStages = {}
     playEffectStagesl=playEffectStages
     for i,v in ipairs(joker.jslots) do
-        if v.myjslotid then v.myjslotid = i end
-        if v.shiftUpdate then v.shiftUpdate() end
+        if v.myjslotid then v.myjslotid = i print(i.." idupdated ") end
+        if v.shiftUpdate then v.shiftUpdate() print(i.." shiftupdated ") end
         joker.addStages(v)
     end
 end
