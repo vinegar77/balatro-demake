@@ -7,9 +7,9 @@ end
 local cursorid,cursor,nselect,scoreIds,animationflag,score,ui,uicanvas
 local dischips,dismult,chiprate,multrate,spamdelay, cante, blindcan, blindrq, dispscore, imult, ichips, scoringPopup, cDist, cOffset, dragMode, cursorD
 local updateBlind, bigFont, writeBig, dispscoreS, noUpMult, jSlotShad, nScoringEvents, uiButts, aHeldTimer, bUICan
-local font18,fonttiny, scoreTimer, prescore, playCardStartPos, nhcard, shand, njoker, sjoke
+local font18,fonttiny, scoreTimer, prescore, playCardStartPos, nhcard, shand, njoker, sjoke, demobgmusic, triggersfx, scoreupsfx, selectsfx, deselectsfx, dragsfx
 local Updater,Drawer,bigFontq,priorityDrawer={},{},{},{}
-local drawToUiCanvas, calcAddScore, drawHandCards, drawJokers, topScreenDraw, updateBUiCan
+local drawToUiCanvas, calcAddScore, drawHandCards, drawJokers, topScreenDraw, updateBUiCan 
 card,hTypes,fourfinger,shortcut,curHand,chips,mult,money,chands,cdiscards,maxhands,maxdiscards,handSize,joker=nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil
 scoreCardStages,scoreCardReStages,playEffectStages,preDiscardStages = {},{},{},{}
 local scoreCardScoringStages,scoreCardHandStages,scoreCardScoringReStages,scoreCardHandReStages
@@ -55,6 +55,15 @@ local loadCoro = coroutine.create(function ()
     love.graphics.newImage("resources/textures/popup/mult.png"),
     love.graphics.newImage("resources/textures/popup/mult.png")}
     coroutine.yield()
+    demobgmusic=love.audio.newSource("resources/tbnewloop_unrolledBalatro.ogg","stream")
+    demobgmusic:setLooping(true)
+    triggersfx=love.audio.newSource("resources/trigger.ogg","static")
+    scoreupsfx=love.audio.newSource("resources/scoreaddreal.wav","stream")
+    selectsfx=love.audio.newSource("resources/select.wav","static")
+    deselectsfx=love.audio.newSource("resources/deselect.wav","static")
+    dragsfx=love.audio.newSource("resources/drag.wav","static")
+    scoreupsfx:setLooping(true)
+    coroutine.yield()
     uicanvas=love.graphics.newCanvas(153,240)
     blindcan=love.graphics.newCanvas(135,71)
     bUICan=love.graphics.newCanvas(320,240)
@@ -67,18 +76,13 @@ local loadCoro = coroutine.create(function ()
     coroutine.yield()
     card.newEnhancedDeck()
     joker.setDefaultStagesLoad()
-    joker.addNewJoker(28,1)
-    joker.addNewJoker(34,2)
-    joker.addNewJoker(40,3)
-    print("added bp")
-    joker.addNewJoker(42,1)
-    print("added after bp")
+    joker.demoRandJoker()
+    joker.demoRandJoker()
+    joker.demoRandJoker()
     coroutine.yield()
-    joker.addNewJoker(33,-1)
-    joker.addNewJoker(35,-1)
-    joker.addNewJoker(38,-1)
-    joker.addNewJoker(32,0)
-    joker.addNewJoker(41,-1)
+    joker.demoRandJoker()
+    joker.demoRandJoker()
+    joker.demoBonusNeg()
     scoreCardStages= _G.scoreCardStages
     scoreCardReStages = _G.scoreCardReStages
     playEffectStages = _G.playEffectStages
@@ -94,6 +98,7 @@ local loadCoro = coroutine.create(function ()
     table.insert(priorityDrawer,drawJokers)
     table.insert(priorityDrawer,drawHandCards)
     table.insert(Drawer,drawToUiCanvas)
+    demobgmusic:play()
 end)
 
 local function loadCoroManager(_,myid)
@@ -115,7 +120,7 @@ function love.load()
     spamdelay=0
     money=0
     dragMode=false
-    cante,blindrq=1,35900 --update with function to determine later
+    cante,blindrq=1,3590 --update with function to determine later
     score,dispscore,dispscoreS=0,0,"0"
     handSize=8
     updateHSizeVars(handSize)
@@ -349,7 +354,7 @@ local function idHandTypes()
     --high card
     if handTypeDigestable[1]==12 then
         for i=#sortedS,1,-1 do
-            if sortedS[i]~=99 then 
+            if sortedS[i]~=99 then
                 scoreIds[#scoreIds+1]=sortedSids[i]
                 break
             end
@@ -735,6 +740,7 @@ local function jokerScoreAndAnimate(dt,myid)
     table.insert(Updater,updateUiCanvas)
     end
     scoreTimer=.7
+    triggersfx:play()
 end
 
 local function prepJokerScoreAndAnimate(dt,myid)
@@ -794,6 +800,7 @@ local function handScoreAndAnimate(dt,myid)
     table.insert(Updater,updateUiCanvas)
     end
     scoreTimer=.7
+    triggersfx:play()
 end
 
 local function prepHandScoreAndAnimate(dt,myid)
@@ -850,6 +857,7 @@ local function scoreAndAnimate(dt,myid)
     table.insert(Updater,updateUiCanvas)
     end
     scoreTimer=.7
+    triggersfx:play()
 end
 
 local tempPreScoreStages = {}
@@ -874,6 +882,7 @@ local function preScoreAndAnimate(dt,myid)
         table.insert(Updater,scorePopUpUpdate)
         table.insert(Updater,updateUiCanvas)
         scoreTimer=(#tempPreScoreStages==0 and .8 or.6)
+        triggersfx:play()
     else
         prescore=false
         scoreTimer=.3
@@ -903,6 +912,7 @@ local function preDiscardEffects(dt,myid)
         table.insert(Updater,scorePopUpUpdate)
         table.insert(Updater,updateUiCanvas)
         scoreTimer=.6
+        triggersfx:play()
     else
         card.discardS(handSize)
         cdiscards=cdiscards-1
@@ -911,6 +921,7 @@ local function preDiscardEffects(dt,myid)
         cursorid[2] = cursorid[1]==1 and cursorid[2]>#card.hand and #card.hand or cursorid[2]
         animationflag=false
         table.remove(Updater,myid)
+        dragsfx:play()
         return table.insert(Updater,updateUiCanvas)
     end
 end
@@ -955,31 +966,36 @@ local function playSCards()
     table.insert(Updater,preScoreAndAnimate)
 end
 
+local demoAnteUp=false
+
 local function postScoreReset()
     card.play={}
     card.playcan={}
     card.toScore={}
     card.hselect={}
+    if score>blindrq then
+        table.insert(Drawer,function (screen)
+            if screen~="bottom" then
+                love.graphics.print("Congrats!\nPress B to ante up...",200,40)
+            end
+            demoAnteUp=true
+        end)
+        return
+    end
+    if chands==0 then
+        demobgmusic:stop()
+        table.insert(Drawer,function (screen)
+            if screen~="bottom" then
+                love.graphics.print("Made it to Ante "..cante.."!\nHit start to leave",200,40)
+            end
+        end)
+        return
+    end
     cursorid={1,1}
     card.drawCard(math.max(handSize-#card.hand,0))
     card.sortHand()
     updateHSizeVars(#card.hand)
     nselect=0
-    if chands==0 then
-        fourfinger=false
-        Smeared=false
-        shortcut=false
-        table.insert(Drawer,function (screen)
-            if screen~="bottom" then
-                if score<blindrq then
-                    love.graphics.print("Too bad... \nHit start to exit",200,40)
-                else
-                    love.graphics.print("...How did you win?!?\nCongrats!!\nBut winning hasn't been\nadded yet...",200,40)
-                end
-            end
-        end)
-        return
-    end
     animationflag=false
 end
 
@@ -997,6 +1013,7 @@ function calcAddScore(dt,myid)
     if deleteself then
         chiprate,multrate,imult,ichips=nil,nil,0,0
         postScoreReset()
+        scoreupsfx:stop()
         return myid and table.remove(Updater,myid)
     end
     if not chiprate then
@@ -1004,6 +1021,7 @@ function calcAddScore(dt,myid)
         multrate=dscore
         imult=math.floor(dismult)
         ichips=dischips
+        scoreupsfx:play()
     end
     dispscore=dispscore+(dscore/chiprate>1 and chiprate or dscore)
     dispscoreS=formatNum(dispscore,10)
@@ -1048,7 +1066,7 @@ function love.update(dt)
     debugstring=debugstring..i
     end
     --]]
-    debugstring=love.timer.getFPS().."\n"..nScoringEvents.."\n"..#Drawer
+    --debugstring=love.timer.getFPS().."\n"..nScoringEvents.."\n"..#Drawer
 end
 
 
@@ -1063,7 +1081,7 @@ end
 function topScreenDraw(screen,_)
     if screen=="bottom" then return end
     love.graphics.setBlendMode("alpha","alphamultiply")
-    love.graphics.print(debugstring,160,20)
+    --love.graphics.print(debugstring,160,20)
     love.graphics.setBlendMode("alpha","premultiplied")
     love.graphics.draw(uicanvas,0,0)
     love.graphics.draw(blindcan,15,6)
@@ -1138,20 +1156,43 @@ local function prepareDrag(dt,myid)
 end
 
 local tempAHold = nil
+local demoResetTimer = 0
 function love.gamepadpressed(_,button)
+    if demoAnteUp and button=="b" then
+        card.hand={}
+        card.handcan={}
+        card.deck={}
+        for _,v in ipairs(card.fdeck) do
+            table.insert(card.deck,v)
+        end
+        card.drawCard(handSize)
+        card.sortHand()
+        updateHSizeVars(#card.hand)
+        blindrq=blindrq*3
+        chands=maxhands
+        cdiscards=maxdiscards
+        cursorid={1,1}
+        nselect=0
+        score=0
+        cante=cante+1
+        dispscore=0
+        dispscoreS="0"
+        updateBlind(1)
+        updateBUiCan()
+        table.remove(Drawer,#Drawer)
+        table.insert(Drawer,drawToUiCanvas)
+        demoAnteUp=false
+        animationflag=false
+        dragsfx:play()
+        return
+    end
     if button=="start" then
         love.event.quit()
     end
     if animationflag then return end
     --[[
     if button=="back" then
-        if dragMode then return end
-        card.debugHand()
-        nselect=0
-        card.hselect={}
-        --debugstring = ""
-        chips=0 mult=0
-        table.insert(Updater,updateUiCanvas)
+        demoResetTimer = love.timer.getTime()
     end
     --]]
     if button=="dpleft" then
@@ -1173,6 +1214,7 @@ function love.gamepadpressed(_,button)
                 card.hand[idref-1],card.handcan[idref-1]=card.hand[idref],card.handcan[idref]
                 card.hand[idref],card.handcan[idref]=temp,temp2
             end
+            dragsfx:play()
         end
         cursorid[2]=cursorid[2]==1 and #card.hand or cursorid[2]-1
         elseif cursorid[1]==2 then
@@ -1189,7 +1231,7 @@ function love.gamepadpressed(_,button)
                 joker.jslots[idref-1],joker.jcan[idref-1]=joker.jslots[idref],joker.jcan[idref]
                 joker.jslots[idref],joker.jcan[idref]=temp,temp2
             end
-
+            dragsfx:play()
         end
         cursorid[2]=cursorid[2]==1 and #joker.jslots or cursorid[2]-1
         end
@@ -1213,6 +1255,7 @@ function love.gamepadpressed(_,button)
                 card.hand[idref+1],card.handcan[idref+1]=card.hand[idref],card.handcan[idref]
                 card.hand[idref],card.handcan[idref]=temp,temp2
             end
+            dragsfx:play()
         end
         cursorid[2]=math.fmod(cursorid[2],#card.hand)+1
         elseif cursorid[1]==2 then
@@ -1228,6 +1271,7 @@ function love.gamepadpressed(_,button)
                 joker.jslots[idref+1],joker.jcan[idref+1]=joker.jslots[idref],joker.jcan[idref]
                 joker.jslots[idref],joker.jcan[idref]=temp,temp2
                 end
+                dragsfx:play()
             end
         cursorid[2]=math.fmod(cursorid[2],#joker.jslots)+1
         end
@@ -1262,6 +1306,7 @@ function love.gamepadpressed(_,button)
         if nselect==0 or dragMode then return end
         chands=chands-1
         playSCards()
+        dragsfx:play()
         table.insert(Updater,updateUiCanvas)
     end
     if button=="b" then
@@ -1290,10 +1335,12 @@ function love.gamepadreleased(_,button)
             card.hand[idref].selected=false
             card.hselect[idref]=nil
             nselect=nselect-1
+            deselectsfx:play()
             elseif nselect<5 then
             card.hand[idref].selected=true
             card.hselect[idref]=card.hand[idref]
             nselect=nselect+1
+            selectsfx:play()
             end
             if nselect==0 then chips=0 mult=0
                 table.insert(Updater,updateUiCanvas) 
@@ -1318,4 +1365,11 @@ function love.gamepadreleased(_,button)
             end
         end
     end
+    --[[
+    if button=="back" then
+        if love.timer.getTime()-demoResetTimer > 1 then
+            love.event.quit("restart")
+        end
+    end
+    --]]
 end

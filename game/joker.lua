@@ -1,10 +1,19 @@
 local joker={init=nil,jslots={},jcan={},jspace=0,joffset=0}
 local card, Updater, Drawer
 joker.jokerAtlas = love.graphics.newImage("resources/textures/jokers.png")
+local jokeImData = love.image.newImageData("resources/textures/jokers.png")
 joker.maxjslots = 5
-local scoreCardStages = scoreCardStages
-local scoreCardReStages = scoreCardReStages
-local playEffectStages = playEffectStages
+local scoreCardStagesl = scoreCardStages
+local scoreCardReStagesl = scoreCardReStages
+local playEffectStagesl = playEffectStages
+local tempP = love.graphics.newCanvas(39,53)
+local tempA = love.image.newImageData(39,53)
+
+local cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,32,33,34,35,36,38,40,41,42}
+
+function joker.resetcjokerTable()
+    cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,32,33,34,35,36,38,40,41,42}
+end
 
 function joker.init(c,u,d)
     card=c
@@ -12,27 +21,56 @@ function joker.init(c,u,d)
     Drawer = d
 end
 
+local scoreStagesDefault={}
+
+function joker.setDefaultStagesLoad()
+    for i=1,2 do
+        scoreStagesDefault[i]={}
+        for j,v in ipairs(scoreCardStagesl[i]) do
+            scoreStagesDefault[i][j]=v
+        end
+    end
+    scoreStagesDefault[3]={}
+    for i=1,2 do
+        scoreStagesDefault[i+3]={}
+        for j,v in ipairs(scoreCardReStagesl[i]) do
+            scoreStagesDefault[i+3][j]=v
+        end
+    end
+end
+
+function joker.returnDefaultStages()
+    local temp,tempRe = {{},{},{}},{{},{}}
+    for i=1,2 do
+        for j,v in ipairs(scoreStagesDefault[i]) do
+            temp[i][j]=v
+        end
+    end
+    for i=1,2 do
+        for j,v in ipairs(scoreStagesDefault[i+3]) do
+            tempRe[i][j]=v
+        end
+    end
+    return temp, tempRe
+end
+
+
 local foil=editDraw[1]
 local holo = editDraw[2]
-polyimage=editDraw[3]
-hueshift=0
-local polyimage=polyimage
+local polyimage=editDraw[3]
+local hueshift=0
 --global psuedo shaders
 
-function negate(_,_,r,g,b,a)
+local function negate(_,_,r,g,b,a)
     return 1.05-.88*b, 1.28-g, 1.3-.978*r, a
 end
 
-local negate = negate
-
-function h2rbg(p,q,h)
+local function h2rbg(p,q,h)
     h = math.fmod(h,1)*6
     return h<1 and p+(q-p)*h or h<3 and q or h<4 and p+(q-p)*(4-h) or p
 end
 
-local h2rbg = h2rbg
-
-function polyify(x,y,r,g,b,a)
+local function polyify(x,y,r,g,b,a)
     local lo,hi = math.min(r,g,b),math.max(r,g,b)
     local d = hi-lo
     if (d==0) then return r,g,b,a end
@@ -55,17 +93,21 @@ function polyify(x,y,r,g,b,a)
     return h2rbg(p,q,h+1/3),h2rbg(p,q,h),h2rbg(p,q,h-1/3),a
 end
 
-local polyify = polyify
-
-function joker.drawModJoker(id,edit,temp1,temp2)
+function joker.drawModJoker(id,edit,temp1)
     if edit==1 then
-        local tempP = love.graphics.newCanvas(39,53)
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
         love.graphics.setCanvas(tempP)
+        love.graphics.setBlendMode("replace")
+        love.graphics.setColor(1,1,1,0)
+        love.graphics.rectangle("fill",0,0,39,53)
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(1,1,1,1)
+
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setBlendMode("screen")
         love.graphics.draw(foil[1])
         love.graphics.setBlendMode("alpha")
-        love.graphics.setColor(1,1,1,.6)
+        love.graphics.setColor(1,1,1,.8)
         love.graphics.draw(foil[2])
         love.graphics.setColor(1,1,1,1)
         love.graphics.setBlendMode("replace")
@@ -80,8 +122,14 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         return
     end
     if edit==2 then
-        local tempA = love.graphics.newCanvas(39,53)
-        love.graphics.setCanvas(tempA)
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
+        love.graphics.setCanvas(tempP)
+        love.graphics.setBlendMode("replace")
+        love.graphics.setColor(1,1,1,0)
+        love.graphics.rectangle("fill",0,0,39,53)
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(1,1,1,1)
+
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setBlendMode("multiply","premultiplied")
         love.graphics.draw(holo[1])
@@ -95,14 +143,11 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         love.graphics.setBlendMode("alpha")
         love.graphics.setCanvas()
         love.graphics.setCanvas(temp1)
-        love.graphics.draw(tempA)
+        love.graphics.draw(tempP)
         return love.graphics.setCanvas()
     end
     if edit==3 then
-        local tempA = love.image.newImageData(39,53)
-        local tempB = love.image.newImageData("resources/textures/jokers.png")
-        tempA:paste(tempB,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
-        tempB=nil
+        tempA:paste(jokeImData,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
         hueshift=love.math.random()
         tempA:mapPixel(polyify)
         hueshift=0
@@ -111,10 +156,7 @@ function joker.drawModJoker(id,edit,temp1,temp2)
         love.graphics.draw(tempC)
         return love.graphics.setCanvas()
     end
-    local tempA = love.image.newImageData(39,53)
-    local tempB = love.image.newImageData("resources/textures/jokers.png")
-    tempA:paste(tempB,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
-    tempB=nil
+    tempA:paste(jokeImData,0,0,1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53)
     tempA:mapPixel(negate)
     local tempC = love.graphics.newImage(tempA)
     love.graphics.setCanvas(temp1)
@@ -122,17 +164,29 @@ function joker.drawModJoker(id,edit,temp1,temp2)
     return love.graphics.setCanvas()
 end
 
+function joker.demoRandJoker()
+    local temp,temp2 = love.math.random(),love.math.random(1,#cjokerTable)
+    joker.addNewJoker(cjokerTable[temp2],temp>.9 and 3 or temp>.8 and 2 or temp>.7 and 1 or 0)
+    table.remove(cjokerTable,temp2)
+end
+
+function joker.demoBonusNeg()
+    if love.math.random()>.9 then
+        joker.addNewJoker(cjokerTable[love.math.random(1,#cjokerTable)],-1)
+    end
+end
+
+
 function joker.addNewJoker(id,edit)
     local newJoker = require("jokerCode/"..id)
     package.loaded["jokerCode/"..id]=nil
     joker.jslots[#joker.jslots+1] = newJoker
     local temp1 = love.graphics.newCanvas(39,53)
-    local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
     if edit and edit~=0 then
-        joker.drawModJoker(id,edit,temp1,temp2)
+        joker.drawModJoker(id,edit,temp1)
     else
+        local temp2 = love.graphics.newQuad(1+41*math.fmod(id-1,10),1+55*math.floor((id-1)/10),39,53,joker.jokerAtlas)
         love.graphics.setCanvas(temp1)
-        print(love.graphics.getBlendMode())
         love.graphics.draw(joker.jokerAtlas,temp2)
         love.graphics.setCanvas()
     end
@@ -141,36 +195,60 @@ function joker.addNewJoker(id,edit)
     if newJoker.onBuy then newJoker.onBuy() end
     newJoker.bounce=0
     newJoker.edit = edit
-    joker.addStages(newJoker)
+    if edit == -1 then
+        joker.maxjslots = joker.maxjslots+1
+    end
     joker.jspace=(j<4 and 100 or math.floor(200/(j-1)))
     joker.joffset=(j>2 and 4 or j==2 and 54 or j==1 and 104)
+    joker.postDrag()
 end
 function joker.addStages(cjoker)
     if cjoker.onPlayEffect then
-        table.insert(playEffectStages,cjoker.onPlayEffect)
+        table.insert(playEffectStagesl,cjoker.onPlayEffect)
     end
     if cjoker.onScore then
-        table.insert(scoreCardStages[1],cjoker.onScore)
+        table.insert(scoreCardStagesl[1],cjoker.onScore)
+    end
+    if cjoker.onScoreRe then
+        table.insert(scoreCardReStagesl[1],cjoker.onScoreRe)
     end
     if cjoker.onHand then
-        table.insert(scoreCardStages[2],cjoker.onHand)
+        table.insert(scoreCardStagesl[2],cjoker.onHand)
+    end
+    if cjoker.onHandRe then
+        table.insert(scoreCardReStagesl[2],cjoker.onHandRe)
     end
     if cjoker.edit then
         if cjoker.edit==1 then
-            table.insert(scoreCardStages[3],foilScore)
+            table.insert(scoreCardStagesl[3],foilScore)
         end
         if cjoker.edit==2 then
-            table.insert(scoreCardStages[3],holoScore)
+            table.insert(scoreCardStagesl[3],holoScore)
         end
     end
     if cjoker.onJoker then
-        --scoreCardStages[3][#scoreCardStages[3]+1]=cjoker.onJoker
-        table.insert(scoreCardStages[3],cjoker.onJoker)
+        table.insert(scoreCardStagesl[3],cjoker.onJoker)
     else
-        table.insert(scoreCardStages[3],false)
+        table.insert(scoreCardStagesl[3],false)
     end
     if cjoker.edit==3 then
-        table.insert(scoreCardStages[3],polyScore)
+        table.insert(scoreCardStagesl[3],polyScore)
+    end
+    if cjoker.onDiscard then
+        table.insert(preDiscardStages,cjoker.onDiscard)
+    end
+end
+
+function joker.postDrag()
+    scoreCardStages,scoreCardReStages = joker.returnDefaultStages()
+    scoreCardStagesl,scoreCardReStagesl = scoreCardStages,scoreCardReStages
+    preDiscardStages={}
+    playEffectStages = {}
+    playEffectStagesl=playEffectStages
+    for i,v in ipairs(joker.jslots) do
+        if v.myjslotid then v.myjslotid = i end
+        if v.shiftUpdate then v.shiftUpdate() end
+        joker.addStages(v)
     end
 end
 

@@ -9,7 +9,12 @@ local playEffectStagesl = playEffectStages
 local tempP = love.graphics.newCanvas(39,53)
 local tempA = love.image.newImageData(39,53)
 
-local cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,29,30,36}
+local cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,32,33,34,35,36,38,40,41,42}
+
+function joker.resetcjokerTable()
+    cjokerTable={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,32,33,34,35,36,38,40,41,42}
+end
+
 function joker.init(c,u,d)
     card=c
     Updater = u
@@ -159,6 +164,19 @@ function joker.drawModJoker(id,edit,temp1)
     return love.graphics.setCanvas()
 end
 
+function joker.demoRandJoker()
+    local temp,temp2 = love.math.random(),love.math.random(1,#cjokerTable)
+    joker.addNewJoker(cjokerTable[temp2],temp>.9 and 3 or temp>.8 and 2 or temp>.7 and 1 or 0)
+    table.remove(cjokerTable,temp2)
+end
+
+function joker.demoBonusNeg()
+    if love.math.random()>.9 then
+        joker.addNewJoker(cjokerTable[love.math.random(1,#cjokerTable)],-1)
+    end
+end
+
+
 function joker.addNewJoker(id,edit)
     local newJoker = require("jokerCode/"..id)
     package.loaded["jokerCode/"..id]=nil
@@ -228,8 +246,8 @@ function joker.postDrag()
     playEffectStages = {}
     playEffectStagesl=playEffectStages
     for i,v in ipairs(joker.jslots) do
-        if v.myjslotid then v.myjslotid = i print(i.." idupdated ") end
-        if v.shiftUpdate then v.shiftUpdate() print(i.." shiftupdated ") end
+        if v.myjslotid then v.myjslotid = i end
+        if v.shiftUpdate then v.shiftUpdate() end
         joker.addStages(v)
     end
 end

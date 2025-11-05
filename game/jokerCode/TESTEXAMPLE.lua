@@ -1,5 +1,9 @@
 local me = {myslotid=0}
 
+function me.shiftUpdate()
+end
+function me.fdeckUpdate()
+end
 function me.onBuy()
 end
 function me.onSell(sold)
