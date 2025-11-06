@@ -22,6 +22,7 @@ end
 
 local card, scoreCardStages, scoreCardReStages, playEffectStages,joker,jumpMap
 local loadCoro = coroutine.create(function ()
+    animationflag=true
     coroutine.yield()
     editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
     {love.graphics.newImage("resources/textures/editions/holob.png"), love.graphics.newImage("resources/textures/editions/holot.png")},
@@ -99,6 +100,7 @@ local loadCoro = coroutine.create(function ()
     table.insert(priorityDrawer,drawHandCards)
     table.insert(Drawer,drawToUiCanvas)
     demobgmusic:play()
+    animationflag=false
 end)
 
 local function loadCoroManager(_,myid)
@@ -986,7 +988,7 @@ local function postScoreReset()
         demobgmusic:stop()
         table.insert(Drawer,function (screen)
             if screen~="bottom" then
-                love.graphics.print("Made it to Ante "..cante.."!\nHit start to leave",200,40)
+                love.graphics.print("Made it to Ante "..cante.."!\nHit start to exit",200,40)
             end
         end)
         return

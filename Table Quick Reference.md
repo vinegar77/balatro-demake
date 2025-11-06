@@ -8,11 +8,12 @@ This project contains quite a few indexes which stand for different things, I'm 
 
 |id|rank|
 |---|---|
-|1|Ace|
+|1|Ace (internally)|
 |2-10|2-10|
 |11|J|
 |12|Q|
 |13|K|
+|14|Ace (get function)|
 |99|Stone Card|
 
 ## Suite
@@ -23,9 +24,10 @@ This project contains quite a few indexes which stand for different things, I'm 
 |2|Hearts|
 |3|Clubs|
 |4|Diamonds|
-|-3|Stone Card|
-
-When smeared joker active, 1 is black, 0 is red
+|0|Red (Smeared Joker Active)|
+|-1|Black (Smeared Joker Active)|
+|-3|Wild Card|
+|-4|Stone Card|
 
 ## Modifier
 
@@ -39,15 +41,13 @@ Learned later that it's actually called enhancements in game
 |3|Bonus Card|OnScoreScoring|
 |4|Lucky Card|OnScoreScoring|
 |5|Mult Card|OnScoreScoring|
-|6|Glass Card*|OnScoreScoring (Breaks PostScoreEffects)|
-|7|Steel Card*|OnScoreHand|
-|8|Gold Card*|Pays out PostScoreEffects|
+|6|Glass Card|OnScoreScoring (Breaks PostScoreEffects)|
+|7|Steel Card|OnScoreHand|
+|8|Gold Card|Pays out PostScoreEffects|
 
-\* = Not yet implemented
+Note: Gold Cards don't pay out, glass cards don't break (asof 0.1.0)
 
 ## Seal
-
-None currently show or function (Gold seal might) WIP
 
 |id|Mod/Enhancement|When Scored
 |---|---|---|
@@ -57,9 +57,9 @@ None currently show or function (Gold seal might) WIP
 |3|Gold|OnScoreScoring|
 |4|Red|OnScoreScoring, OnScoreHand (if an effect took place)|
 
-## Edition (Playing Cards)
+Gold and red function currently, purple and blue don't have any cards to gen yet...
 
-Might work, haven't tested, won't show up at least
+## Edition (Playing Cards)
 
 |id|Mod/Enhancement|When Scored
 |---|---|---|
@@ -69,8 +69,6 @@ Might work, haven't tested, won't show up at least
 |3|Polychrome|OnScoreScoring|
 
 ## Edition (Jokers)
-
-Given that jokers are not implemented this is stc, negative is slot -1 to not get in the way with scoring tbh (and also a little bc funny)
 
 |id|Mod/Enhancement|When Scored
 |---|---|---|
@@ -110,8 +108,17 @@ sortMode: True=Rank, False=Suite
 3. OnShopEnd when shop is done i.e. perkeo
 4. OnBlind when blind starts i.e. burglar
 5. OnDiscard when discarding
-6. 
+6. OnPlayEffect before cards begin to score i.e. green joker upgrade
+7. OnScore, when cards score
+8. OnScoreRe, retriggers scoring cards
+9. OnHand, checked by each card in hand after scoring cards
+10. OnHandRe, retriggers card in hand effects
+11. OnJoker, independant joker effects
+12. ScoringDone, after scoring has completed (like glass cards breaking)
+13. OnRoundDone, after the round is over
+14. OnPayout, adds extra stage to payout
 
+might need more later we'll see ig
 
 ## Scoring tldr
 
@@ -120,8 +127,6 @@ Order of scoring same as in real balatro:
 2. OnScoreScoring
 3. OnScoreHand
 4. OnScoreJoker
-
-Currently only OnScoreScoring takes place as of this demo. Ignore the declarative language implying otherwise, this is for future implementation
 
 ### Set OnScoreScoring Stages
 
@@ -154,8 +159,30 @@ Retriggers:
 Note that retriggers only occur if the card scores in the first place, which is not always the case anymore.
 
 ### OnScoreJoker
-OnScoreJoker iterates over all jokers and applies their appropriate effects, if applicable. Can iterate more than once over same joker if it has multiple effects (like an edition for example), similar to onScoreScoring.
+OnScoreJoker iterates upwards from 1 to the number of stages contained. Some effects like editions might bring the pop-up key down to give one joker multiple pop up effects. All jokers contribute something to this stage, if they have no effect they will contribute "false", which is skipped over automatically.
 
 #### Baseball Card
 
-Baseball card scores OnScoreJoker whenever it iterates over a uncommon joker.
+Baseball card scores OnScoreJoker whenever it iterates over a uncommon joker. (not implemented yet idk why this is here)
+
+## JokerCode
+
+Jokers are given code which is saved as an index.lua in the jokerCode folder. The index is the order I drew them in the spritesheet, aka completely arbitrary.
+
+### Joker AddStages
+
+Each joker contains some keys linked to functions, the keys being as above in full joker activation stages. OnBuy is only called once at the start. OnSell is called when the joker is sold. Most stages are added through a function called AddStages which adds the functions according to the keys to the correct stage tables, to be called when needed.
+
+### Joker ShiftUpdate
+
+Some jokers have a function called ShiftUpdate. Despite the name, this is called not only when jokers are dragged, but also when new jokers are added via addnewjoker. This means shiftupdate takes care of joker-position-specific effects like the copy jokers, and also updates joker-composition-specific effects like Joker Stencil.
+
+#### Copy Jokers (Bluestorm)
+
+Some jokers will have a tag that states they can't be copied. Some jokers have a table with a list of which of their functions are ok to copy. The rest will simply have all of their functions except onBuy copied.
+
+Copy jokers gain their effects during the shiftupdate stage. When blueprint attempts to copy, it is checked if the target is blueprint or brainstorm. If so, it will force the other joker to shiftupdate first, so that it copies the updated effect of the joker.
+
+### Joker myJSlotId
+
+Some jokers rely on knowing their joker slot position, such as all on score or on hand jokers. These jokers have a key called myJSlotId, who's value is updated on buy and after every shift.
