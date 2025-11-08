@@ -22,7 +22,6 @@ end
 
 local card, scoreCardStages, scoreCardReStages, playEffectStages,joker,jumpMap
 local loadCoro = coroutine.create(function ()
-    animationflag=true
     coroutine.yield()
     editDraw = {{love.graphics.newImage("resources/textures/editions/foilb.png"),love.graphics.newImage("resources/textures/editions/foilt.png")},
     {love.graphics.newImage("resources/textures/editions/holob.png"), love.graphics.newImage("resources/textures/editions/holot.png")},
@@ -111,6 +110,7 @@ end
 
 
 function love.load()
+    animationflag=true
     if love.graphics.setStereoscopic then
     love.graphics.setStereoscopic(false)
     end
@@ -971,6 +971,9 @@ end
 local demoAnteUp=false
 
 local function postScoreReset()
+    for _,v in ipairs(card.play) do
+        v.scoring=false
+    end
     card.play={}
     card.playcan={}
     card.toScore={}
@@ -1068,7 +1071,14 @@ function love.update(dt)
     debugstring=debugstring..i
     end
     --]]
-    --debugstring=love.timer.getFPS().."\n"..nScoringEvents.."\n"..#Drawer
+    --statstest=love.graphics.getStats()
+    --debugstring=statstest.texturememory.."\n"..statstest.canvases
+    --debugstring = ""
+    --if scoreIds then
+    --for _,v in pairs(scoreIds) do
+        --debugstring=debugstring.." "..v
+    --end
+--end
 end
 
 
@@ -1125,6 +1135,7 @@ function love.draw(screen)
     for i=#Drawer,1,-1 do
         Drawer[i](screen,i)
     end
+    love.graphics.print(debugstring, 200,60)
 end
 
 local function postDragClarity()
@@ -1163,7 +1174,14 @@ function love.gamepadpressed(_,button)
     if demoAnteUp and button=="b" then
         card.hand={}
         card.handcan={}
+        --[[
+        for i=#card.handcan,1,-1 do
+            card.handcan[i]:release()
+            table.remove(card.handcan,i)
+        end
+        --]]
         card.deck={}
+        collectgarbage("collect")
         for _,v in ipairs(card.fdeck) do
             table.insert(card.deck,v)
         end

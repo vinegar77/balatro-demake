@@ -11,8 +11,8 @@ for _,v in pairs(card.hselect) do
     end
 end
 if numFace>2 then
-    money=money+3
-    return {str="+$3",id=3,key=me.myjslotid,drawLoc=3}
+    money=money+5
+    return {str="+$5",id=3,key=me.myjslotid,drawLoc=3}
 end
 end
 

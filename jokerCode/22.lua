@@ -32,7 +32,7 @@ end
 
 local function copyAll(copyTarget)
     for k,v in pairs(copyTarget) do
-        if type(v)=="function" and k~="onBuy" then
+        if type(v)=="function" and k~="onBuy" and k~="shiftUpdate" then
             if k=="onSell" then
                 me[k]=function (sold)
                     local temp = v(sold)
